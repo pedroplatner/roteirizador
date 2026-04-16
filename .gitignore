@@ -1,0 +1,23 @@
+# Cache e dados gerados automaticamente
+__pycache__/
+*.pyc
+*.pyo
+
+# Dados locais (não versionar — cada cliente tem o seu)
+*.json
+*.xlsx
+*.xls
+*.csv
+
+# Ambiente virtual Python
+venv/
+.venv/
+env/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log

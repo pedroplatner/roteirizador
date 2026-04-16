@@ -11,7 +11,7 @@ APP_NAME = "Roteirizador"
 TRIAL_DAYS_PADRAO = 30
 
 # Senha para liberar manualmente quando offline (env var ou fallback)
-SENHA_MESTRA = os.environ.get("ROTEIRIZADOR_KEY", "Binho@Rot2025#!")
+SENHA_MESTRA = os.environ.get("ROTEIRIZADOR_KEY", "Pl@tner#Rot28$")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # COLE AQUI A URL RAW DO SEU GIST depois de criá-lo (instruções no README)

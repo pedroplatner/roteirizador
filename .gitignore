@@ -21,3 +21,7 @@ desktop.ini
 
 # Logs
 *.log
+
+# Guias locais (uso interno — não subir para o GitHub)
+GUIA_CLIENTE.md
+GUIA_OPERACIONAL.md

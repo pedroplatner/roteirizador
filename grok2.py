@@ -93,8 +93,28 @@ st.set_page_config(page_title="Roteirizador V28 (Gerencial)",
     initial_sidebar_state="collapsed"  # <--- ADICIONE ISSO (Começa fechado)
 )
 
-from trial_guard import validar_ou_bloquear
+from trial_guard import validar_ou_bloquear, get_status as _lic_status, machine_id as _machine_id
 validar_ou_bloquear(st)
+
+# ── Status de licença na sidebar ──────────────────────────────────────────────
+def _mostrar_status_licenca():
+    _s = _lic_status()
+    with st.sidebar:
+        with st.expander("🔑 Licença", expanded=False):
+            mid = _s["machine_id"]
+            st.caption(f"ID da máquina: `{mid}`")
+            if _s["ativo"]:
+                dias = _s["dias_restantes"]
+                tipo = "Trial" if _s["tipo"] == "trial" else "Licenciado"
+                if dias <= 7:
+                    st.warning(f"⚠️ {tipo} — expira em **{dias} dia(s)**\n\n`{_s['expira']}`")
+                else:
+                    st.success(f"✅ {tipo} — **{dias} dias** restantes\n\n`{_s['expira']}`")
+            else:
+                st.error("❌ Licença expirada")
+
+_mostrar_status_licenca()
+# ─────────────────────────────────────────────────────────────────────────────
 
 # --- CONFIGURAÇÃO DE TELA FIXA (DASHBOARD MODE) ---
 st.markdown("""
@@ -2197,16 +2217,11 @@ if modo_visual == "Edição (Mapa/Tabela)":
             try: rotas_mexidas_json = get_rotas_alteradas_historico()
             except: rotas_mexidas_json = []
 
-            # --- 2. PREPARAÇÃO DOS DADOS (SYNC) ---
-            dicionario_abas_para_exportar = {}
-            
-            if 'todas_abas_backup' in st.session_state and st.session_state['todas_abas_backup']:
-                aba_atual_nome = st.session_state.get('aba_atual', 'Planilha1')
-                if 'df_ativo' in st.session_state:
-                    st.session_state['todas_abas_backup'][aba_atual_nome] = st.session_state['df_ativo'].copy()
-                dicionario_abas_para_exportar = st.session_state['todas_abas_backup']
+            # --- 2. PREPARAÇÃO DOS DADOS (usa dicionario_final já normalizado) ---
+            if dicionario_final:
+                dicionario_abas_para_exportar = dicionario_final
             else:
-                dicionario_abas_para_exportar = {"Rotas": st.session_state['df_ativo'].copy()}
+                dicionario_abas_para_exportar = {"Rotas": normalizar_df(st.session_state['df_ativo'].copy())}
 
             # --- 3. GERAÇÃO DO ARQUIVO ---
             if dicionario_abas_para_exportar:

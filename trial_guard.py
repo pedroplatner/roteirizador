@@ -16,7 +16,7 @@ SENHA_MESTRA = os.environ.get("ROTEIRIZADOR_KEY", "Binho@Rot2025#!")
 # ─────────────────────────────────────────────────────────────────────────────
 # COLE AQUI A URL RAW DO SEU GIST depois de criá-lo (instruções no README)
 # Exemplo: https://gist.githubusercontent.com/pedroplatner/XXXX/raw/licencas.json
-LICENCAS_URL = ""
+LICENCAS_URL = "https://gist.githubusercontent.com/pedroplatner/feee90d324a59d7553c3d73bacaf7878/raw/licencas.json"
 # ─────────────────────────────────────────────────────────────────────────────
 
 

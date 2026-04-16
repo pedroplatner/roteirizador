@@ -102,16 +102,19 @@ def _mostrar_status_licenca():
     with st.sidebar:
         with st.expander("🔑 Licença", expanded=False):
             mid = _s["machine_id"]
-            st.caption(f"ID da máquina: `{mid}`")
             if _s["ativo"]:
                 dias = _s["dias_restantes"]
                 tipo = "Trial" if _s["tipo"] == "trial" else "Licenciado"
                 if dias <= 7:
-                    st.warning(f"⚠️ {tipo} — expira em **{dias} dia(s)**\n\n`{_s['expira']}`")
+                    st.warning(f"⚠️ {tipo} — expira em **{dias} dia(s)** ({_s['expira']})")
                 else:
-                    st.success(f"✅ {tipo} — **{dias} dias** restantes\n\n`{_s['expira']}`")
+                    st.success(f"✅ {tipo} — **{dias} dias** restantes ({_s['expira']})")
             else:
                 st.error("❌ Licença expirada")
+            st.divider()
+            st.caption("ID desta máquina (envie ao suporte):")
+            st.code(mid, language=None)
+            st.caption("Copie o código acima e mande por WhatsApp/e-mail para o suporte ativar sua licença.")
 
 _mostrar_status_licenca()
 # ─────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,465 @@
+/* ═══════════════════════════════════════════════════════════
+   PLATNER ROTAS — Premium UI Override
+   Fonte: Inter (Google Fonts)
+   Paleta: Navy escuro + Azul vibrante + Tons neutros frios
+═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+/* ─── BASE ─────────────────────────────────────────────── */
+*, *::before, *::after {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
+               'Segoe UI', Roboto, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body { background: #f0f4f8 !important; color: #1e293b !important; }
+
+/* ─── HEADER ────────────────────────────────────────────── */
+#header {
+  background: linear-gradient(135deg, #070f1c 0%, #0f2040 55%, #163370 100%) !important;
+  border-bottom: 1px solid rgba(255,255,255,.08) !important;
+  box-shadow: 0 3px 20px rgba(0,0,0,.4) !important;
+  min-height: 50px !important;
+  padding: 0 16px !important;
+}
+
+#header h1 {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  letter-spacing: -.5px !important;
+  color: #f0f6ff !important;
+}
+
+.badge {
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%) !important;
+  box-shadow: 0 2px 10px rgba(245,158,11,.45) !important;
+  letter-spacing: .6px !important;
+  text-transform: uppercase !important;
+  font-size: 9px !important;
+  padding: 3px 9px !important;
+  border-radius: 20px !important;
+}
+
+.save-ind { font-weight: 600 !important; letter-spacing: .1px !important; }
+.save-ind.ok  { background: rgba(16,185,129,.22) !important; color: #6ee7b7 !important; }
+.save-ind.no  { background: rgba(245,158,11,.22) !important; color: #fcd34d !important; }
+
+/* ─── TOOLBAR ───────────────────────────────────────────── */
+#toolbar {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+  border-bottom: 1px solid #dde3ec !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,.05) !important;
+  padding: 6px 14px !important;
+}
+
+/* ─── INPUTS & SELECTS ──────────────────────────────────── */
+select,
+input[type=text],
+input[type=number] {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  border: 1.5px solid #dde3ec !important;
+  border-radius: 8px !important;
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  transition: border-color .15s, box-shadow .15s, background .15s !important;
+}
+
+select:focus,
+input[type=text]:focus,
+input[type=number]:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59,130,246,.15) !important;
+  background: #ffffff !important;
+  outline: none !important;
+}
+
+/* ─── BOTÕES — BASE ─────────────────────────────────────── */
+button {
+  font-weight: 600 !important;
+  letter-spacing: .15px !important;
+  transition: all .18s cubic-bezier(.4,0,.2,1) !important;
+  border-radius: 8px !important;
+}
+button:active { transform: translateY(1px) scale(.99) !important; }
+
+/* Azul — ação principal */
+.bp {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  box-shadow: 0 2px 10px rgba(59,130,246,.35) !important;
+}
+.bp:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 5px 18px rgba(59,130,246,.5) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Verde — salvar / confirmar */
+.bs {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+  box-shadow: 0 2px 10px rgba(34,197,94,.32) !important;
+}
+.bs:hover {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%) !important;
+  box-shadow: 0 5px 18px rgba(34,197,94,.45) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Âmbar — geocode / atenção */
+.bw {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  box-shadow: 0 2px 10px rgba(245,158,11,.32) !important;
+}
+.bw:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important;
+  box-shadow: 0 5px 18px rgba(245,158,11,.45) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Cinza — ações secundárias */
+.bg {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important;
+  box-shadow: 0 2px 8px rgba(71,85,105,.25) !important;
+}
+.bg:hover {
+  background: linear-gradient(135deg, #475569 0%, #334155 100%) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Dark navy — ações de sistema */
+.bd {
+  background: linear-gradient(135deg, #162944 0%, #070f1c 100%) !important;
+  box-shadow: 0 2px 8px rgba(7,15,28,.35) !important;
+}
+.bd:hover {
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Vermelho — deletar */
+.br {
+  background: linear-gradient(135deg, #f87171 0%, #dc2626 100%) !important;
+  box-shadow: 0 2px 10px rgba(220,38,38,.32) !important;
+}
+.br:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  box-shadow: 0 5px 18px rgba(220,38,38,.45) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Toggle / outline */
+.bt {
+  background: #f1f5f9 !important;
+  color: #475569 !important;
+  border: 1.5px solid #dde3ec !important;
+  font-weight: 600 !important;
+}
+.bt:hover { background: #e2e8f0 !important; color: #0f172a !important; }
+.bt.on {
+  background: linear-gradient(135deg, #162944 0%, #1d4ed8 100%) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 10px rgba(22,41,68,.4) !important;
+}
+
+.sep { background: #dde3ec !important; }
+
+/* ─── SIDEBAR ───────────────────────────────────────────── */
+#sidebar { box-shadow: 2px 0 16px rgba(0,0,0,.05) !important; }
+
+#sb-top {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  padding: 9px 14px !important;
+  border-bottom: 1px solid #eef2f7 !important;
+}
+#sb-top span {
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  letter-spacing: -.2px !important;
+}
+#rec-count {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  background: #dbeafe !important;
+  color: #1d4ed8 !important;
+  padding: 2px 8px !important;
+  border-radius: 20px !important;
+}
+
+#sb-tabs { background: #f8fafc !important; }
+.sb-tab {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: .25px !important;
+  transition: all .14s !important;
+}
+.sb-tab:hover { color: #334155 !important; background: #f1f5f9 !important; }
+.sb-tab.active {
+  color: #2563eb !important;
+  border-bottom-color: #2563eb !important;
+  background: linear-gradient(180deg, #eff6ff 0%, #fff 100%) !important;
+}
+
+/* ─── LISTA DE PESSOAS ──────────────────────────────────── */
+.person-item {
+  padding: 8px 12px !important;
+  border-bottom: 1px solid #f8fafc !important;
+  transition: background .1s, border-left-color .1s !important;
+}
+.person-item:hover { background: #f0f7ff !important; border-left-color: #93c5fd !important; }
+.person-item.selected { background: #dbeafe !important; border-left-color: #3b82f6 !important; }
+.person-item.no-coords { background: #fffbeb !important; }
+.person-item.so-saida { background: #faf5ff !important; }
+
+.person-name {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #0f172a !important;
+  letter-spacing: -.2px !important;
+}
+.person-meta { color: #64748b !important; font-size: 10px !important; }
+.order-badge { box-shadow: 0 1px 5px rgba(0,0,0,.22) !important; }
+
+/* ─── PAINEL DE DETALHES ────────────────────────────────── */
+#detail {
+  border-radius: 16px 0 0 0 !important;
+  box-shadow: -5px -5px 28px rgba(0,0,0,.1) !important;
+}
+#detail h3 {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  letter-spacing: -.3px !important;
+}
+.dl { color: #64748b !important; font-weight: 600 !important; font-size: 10px !important; }
+.dv { color: #1e293b !important; font-size: 11px !important; }
+
+/* ─── LEGENDA DO MAPA ───────────────────────────────────── */
+#legend {
+  border-radius: 14px !important;
+  box-shadow: 0 6px 28px rgba(0,0,0,.13) !important;
+  border: 1px solid rgba(255,255,255,.85) !important;
+  background: rgba(255,255,255,.96) !important;
+  backdrop-filter: blur(12px) !important;
+}
+#legend h4 {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  letter-spacing: -.2px !important;
+}
+
+/* ─── TOOLTIP DO MAPA ───────────────────────────────────── */
+.map-tooltip {
+  background: rgba(7,15,28,.96) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 6px 20px rgba(0,0,0,.35) !important;
+  font-size: 11px !important;
+  padding: 9px 12px !important;
+}
+.map-tooltip b { color: #fbbf24 !important; }
+
+/* ─── BARRA DE ESTATÍSTICAS ─────────────────────────────── */
+#stats {
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+  border-top: 1px solid #dde3ec !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 5px 16px !important;
+  letter-spacing: .1px !important;
+}
+.dot {
+  width: 7px !important;
+  height: 7px !important;
+  box-shadow: 0 0 6px currentColor !important;
+}
+.dg { background: #10b981 !important; }
+.db { background: #3b82f6 !important; }
+.dp { background: #8b5cf6 !important; }
+.do { background: #f59e0b !important; }
+
+/* ─── MODAIS ────────────────────────────────────────────── */
+.modal-ov {
+  background: rgba(7,15,28,.58) !important;
+  backdrop-filter: blur(6px) !important;
+}
+.modal-box {
+  border-radius: 18px !important;
+  box-shadow: 0 28px 70px rgba(0,0,0,.22) !important;
+  border: 1px solid rgba(226,232,240,.6) !important;
+}
+.modal-box h3 {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  letter-spacing: -.3px !important;
+}
+
+/* ─── TOAST ─────────────────────────────────────────────── */
+#toast {
+  background: linear-gradient(135deg, #070f1c 0%, #162944 100%) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 36px rgba(0,0,0,.32) !important;
+  font-weight: 500 !important;
+  letter-spacing: .15px !important;
+  padding: 11px 22px !important;
+}
+
+/* ─── PAINEL DE PARADAS ─────────────────────────────────── */
+#stops-panel {
+  border-radius: 14px !important;
+  box-shadow: 0 10px 40px rgba(0,0,0,.2) !important;
+  border: 1px solid #dde3ec !important;
+}
+.stops-head {
+  background: linear-gradient(135deg, #070f1c 0%, #162944 100%) !important;
+  border-radius: 14px 14px 0 0 !important;
+}
+.stops-head h3 { font-weight: 700 !important; letter-spacing: -.2px !important; }
+.stop-card {
+  border-radius: 10px !important;
+  border: 1px solid #e8eef4 !important;
+  transition: border-color .12s, background .12s !important;
+}
+.stop-card:hover { background: #f0f7ff !important; border-color: #93c5fd !important; }
+
+/* ─── TABELA PLANILHA ───────────────────────────────────── */
+#sheet-table th,
+#route-summary-table th {
+  background: linear-gradient(135deg, #0f172a 0%, #162944 100%) !important;
+  font-size: 11px !important;
+  letter-spacing: .35px !important;
+  text-transform: uppercase !important;
+  font-weight: 600 !important;
+  padding: 7px 12px !important;
+}
+#sheet-table th:hover,
+#route-summary-table th:hover {
+  background: linear-gradient(135deg, #162944 0%, #1d4ed8 100%) !important;
+}
+#sheet-table tr:hover td,
+#route-summary-table tr:hover td { background: #f0f7ff !important; }
+#sheet-table tr.selected-row td,
+#route-summary-table tr.selected-row td { background: #dbeafe !important; }
+
+/* Cards de resumo de rotas */
+.rs-card {
+  border-radius: 10px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: #fff !important;
+  box-shadow: 0 1px 6px rgba(0,0,0,.06) !important;
+  font-size: 11px !important;
+  padding: 7px 12px !important;
+}
+.rs-card b { color: #0f172a !important; font-weight: 700 !important; }
+
+/* ─── ROUTER PANEL ──────────────────────────────────────── */
+.router-header {
+  background: linear-gradient(135deg, #070f1c 0%, #162944 100%) !important;
+}
+.router-tab { font-weight: 600 !important; transition: all .14s !important; }
+.router-tab.active {
+  color: #3b82f6 !important;
+  border-bottom-color: #3b82f6 !important;
+  background: #fff !important;
+}
+.router-body { background: #fff !important; }
+
+/* ─── BARRA DE RESIZE ───────────────────────────────────── */
+.rh { background: #dde3ec !important; }
+.rh:hover { background: #93c5fd !important; transition: background .2s !important; }
+
+/* ─── PILL BADGES ───────────────────────────────────────── */
+.van-pill { font-size: 9px !important; font-weight: 700 !important; letter-spacing: .2px !important; }
+.so-badge { background: #7c3aed !important; font-size: 9px !important; }
+.td-pill { font-size: 9px !important; letter-spacing: .15px !important; border-radius: 5px !important; }
+.td-ok  { background: #d1fae5 !important; color: #065f46 !important; }
+.td-no  { background: #fee2e2 !important; color: #991b1b !important; }
+.td-ss  { background: #f5f0ff !important; color: #6d28d9 !important; }
+
+/* ─── SYNC ROW (Sheets URL) ─────────────────────────────── */
+.sync-row { background: #f8fafc !important; border-bottom: 1px solid #eef2f7 !important; }
+.sync-status.ok      { color: #059669 !important; font-weight: 600 !important; }
+.sync-status.err     { color: #dc2626 !important; font-weight: 600 !important; }
+.sync-status.loading { color: #3b82f6 !important; font-weight: 600 !important; }
+
+/* ─── SCROLLBARS CUSTOMIZADAS ───────────────────────────── */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ─── ANIMAÇÃO DE ENTRADA DO TOAST ─────────────────────── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+#toast[style*="flex"], #toast[style*="block"] { animation: slideUp .25s ease !important; }
+
+/* ─── TELA DE LICENÇA ───────────────────────────────────── */
+#license-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #070f1c 0%, #0f2040 50%, #163370 100%);
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+.license-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 40px 44px;
+  max-width: 440px;
+  width: 92%;
+  box-shadow: 0 32px 80px rgba(0,0,0,.35);
+  text-align: center;
+}
+.license-card h1 { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 6px; letter-spacing: -.5px; }
+.license-card p  { font-size: 13px; color: #64748b; margin-bottom: 20px; line-height: 1.6; }
+.license-mid {
+  background: #f1f5f9;
+  border: 1.5px dashed #94a3b8;
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e40af;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+  user-select: all;
+}
+.license-input {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border: 1.5px solid #dde3ec;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  color: #1e293b;
+  transition: border-color .15s, box-shadow .15s;
+  text-align: center;
+  letter-spacing: 1px;
+}
+.license-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); outline: none; }
+.license-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(59,130,246,.4);
+  transition: all .18s;
+  letter-spacing: .2px;
+}
+.license-btn:hover { background: linear-gradient(135deg, #2563eb, #1d4ed8); transform: translateY(-1px); box-shadow: 0 6px 22px rgba(59,130,246,.5); }
+.license-error { color: #dc2626; font-size: 12px; font-weight: 600; margin-top: 10px; }
+.license-ok    { color: #059669; font-size: 12px; font-weight: 600; margin-top: 10px; }

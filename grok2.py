@@ -1295,64 +1295,7 @@ if modo_visual == "Edição (Mapa/Tabela)":
     # ... (Logo após criar df_show e limpar as colunas) ...
     df_show = df_show.loc[:, ~df_show.columns.duplicated()]
 
-    # ==============================================================================
-    # 🔢 CÁLCULO INTELIGENTE DE PARADAS (RESET POR ROTA)
-    # ==============================================================================
-    # ==============================================================================
-#  NUMERAÇÃO DE PARADAS (CORRIGIDO: usa ORDEM, não HORARIO)
-# ==============================================================================
-
-    mapa_paradas = {}
-
-    # Agrupa os dados por ROTA
-    grupos_rota = df_show.groupby('ROTA')
-
-    for nome_rota, grupo in grupos_rota:
-        if nome_rota in ['', 'nan', 'None', '0']:
-            continue
-
-        # ✅ Garante ORDEM numérica
-        if 'ORDEM' in grupo.columns:
-            grupo = grupo.copy()
-            grupo['ORDEM'] = pd.to_numeric(grupo['ORDEM'], errors='coerce').fillna(10**9)
-
-        # ✅ Ordena pela ORDEM (mantém a “ordem da planilha”)
-        grupo = grupo.sort_values('ORDEM', kind='mergesort')
-
-        # ✅ Agora pega os locais únicos na ordem em que aparecem (sem usar HORARIO)
-        vistos = set()
-        seq = 1
-        for _, row in grupo.iterrows():
-            lat = row.get('LATITUDE EMBARQUE', 0)
-            lon = row.get('LONGITUDE EMBARQUE', 0)
-
-            # proteção de NaN/None
-            lat = float(lat) if pd.notna(lat) else 0.0
-            lon = float(lon) if pd.notna(lon) else 0.0
-
-            if lat != 0:
-           # ✅ chave padronizada (tem que ser igual no get)
-                chave = (str(nome_rota).strip().upper(), round(lat, 6), round(lon, 6))
-                if chave not in vistos:
-                    vistos.add(chave)
-                    mapa_paradas[chave] = seq
-                    seq += 1
-
-    # # Função para aplicar na tabela com proteção contra valores vazios
-    # def get_parada_rota(row):
-    #     try:
-    #         r = row['ROTA']
-    #         val_lat = row.get('LATITUDE EMBARQUE', 0)
-    #         val_lon = row.get('LONGITUDE EMBARQUE', 0)
-    #         lat = float(val_lat) if pd.notna(val_lat) else 0.0
-    #         lon = float(val_lon) if pd.notna(val_lon) else 0.0
-    #         return mapa_paradas.get((r, lat, lon), 0)
-    #     except Exception:
-    #         return 0
-
-    # df_show['PARADA'] = df_show.apply(get_parada_rota, axis=1)
-
-    # ==============================================================================
+    # mapa_paradas será construído após o filtro de sentido (dentro de col_tab)
 
     # 1. CRIA A COLUNA STATUS (Seu código continua aqui...)
     nome_coluna_status = "⚠️ STATUS"
@@ -1414,7 +1357,7 @@ if modo_visual == "Edição (Mapa/Tabela)":
     with col_tab:
         c_sent1, c_sent2 = st.columns([2, 1])
         with c_sent1:
-            sentido = st.radio("Sentido:", ["Ida (Entrada)", "Volta (Saída)"], horizontal=True)
+            sentido = st.radio("Sentido:", ["Ida (Entrada)", "Volta (Saída)"], index=1, horizontal=True)
             
 
         # --- 1. FILTROS PADRÃO (O que você já tinha) ---
@@ -1426,6 +1369,28 @@ if modo_visual == "Edição (Mapa/Tabela)":
             df_show['ORDEM'] = pd.to_numeric(df_show['ORDEM'], errors='coerce').fillna(10**9)
 
         df_show = df_show.sort_values(by=['ROTA', 'ORDEM'], kind='mergesort')
+
+        # Reconstrói mapa_paradas com os dados já filtrados pelo sentido,
+        # garantindo que os números da coluna PARADA batem com os marcadores do mapa
+        mapa_paradas = {}
+        for _rota, _grp in df_show.groupby('ROTA'):
+            if str(_rota) in ['', 'nan', 'None', '0']:
+                continue
+            _grp = _grp.copy()
+            if 'ORDEM' in _grp.columns:
+                _grp['ORDEM'] = pd.to_numeric(_grp['ORDEM'], errors='coerce').fillna(10**9)
+            _grp = _grp.sort_values('ORDEM', kind='mergesort')
+            _vistos = set()
+            _seq = 1
+            for _, _r in _grp.iterrows():
+                _lat = float(_r.get('LATITUDE EMBARQUE', 0) or 0) if pd.notna(_r.get('LATITUDE EMBARQUE', 0)) else 0.0
+                _lon = float(_r.get('LONGITUDE EMBARQUE', 0) or 0) if pd.notna(_r.get('LONGITUDE EMBARQUE', 0)) else 0.0
+                if _lat != 0:
+                    _chave = (str(_rota).strip().upper(), round(_lat, 6), round(_lon, 6))
+                    if _chave not in _vistos:
+                        _vistos.add(_chave)
+                        mapa_paradas[_chave] = _seq
+                        _seq += 1
 
         # ✅ Recalcula PARADA depois do filtro do sentido (Ida já sem XXXXX)
         def get_parada_rota(row):
@@ -1810,7 +1775,15 @@ if modo_visual == "Edição (Mapa/Tabela)":
                     pass
 
         with tab_rotas:
-            rota_alvo = st.selectbox("Rota", sorted(st.session_state["df_ativo"]["ROTA"].dropna().unique()))
+            _rotas_disp = sorted([str(r) for r in st.session_state["df_ativo"]["ROTA"].dropna().unique()
+                                  if str(r) not in ['nan', 'None', '', '0', '0.0']])
+            _filtro_cur = st.session_state.get("filtro_rotas_bar", [])
+            _rota_default_idx = 0
+            if (_filtro_cur and len(_filtro_cur) == 1
+                    and _filtro_cur[0] != "Novos (Sem Rota)"
+                    and _filtro_cur[0] in _rotas_disp):
+                _rota_default_idx = _rotas_disp.index(_filtro_cur[0])
+            rota_alvo = st.selectbox("Rota", _rotas_disp, index=_rota_default_idx)
             hora_alvo = st.text_input("Chegar no cliente às", value="06:37")
             parada_min = st.number_input("Parada por ponto (min)", min_value=0, max_value=10, value=0)
 
@@ -2549,9 +2522,9 @@ if modo_visual == "Edição (Mapa/Tabela)":
             
             # --- 2. CONTROLES ---
             c1, c2, c3 = st.columns([1,1,1])
-            with c1: ver_casas = st.checkbox("🏠 Casas", value=False)
-            with c2: ver_emb = st.checkbox("🚌 Pontos", value=False)
-            with c3: ver_raio = st.checkbox("🔵 Raio", value=False)
+            with c1: ver_casas = st.checkbox("🏠 Casas", key='chk_ver_casas')
+            with c2: ver_emb = st.checkbox("🚌 Pontos", key='chk_ver_emb')
+            with c3: ver_raio = st.checkbox("🔵 Raio", key='chk_ver_raio')
             
             ligar_pontos = True 
             

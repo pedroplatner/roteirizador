@@ -222,6 +222,7 @@ body{font-family:Arial,sans-serif;background:#f0f2f5;color:#222;height:100vh;dis
 .err-badge.sem-coord{background:#fee2e2;color:#991b1b}
 .err-badge.invalido{background:#ffedd5;color:#7c2d12}
 .err-badge.fora-pr{background:#e0f2fe;color:#0c4a6e}
+.err-badge.geo-incerta{background:#fef9c3;color:#854d0e}
 .err-empty{padding:40px;text-align:center;color:#9ca3af;font-size:13px}
 
 /* TOOLBAR */
@@ -910,6 +911,7 @@ function _gerRenameCustom(type,oldVal,newVal){
         <option value="sem_coords">Sem coordenadas</option>
         <option value="coord_invalida">Coordenada inválida</option>
         <option value="casa_fora_pr">Casa fora do PR</option>
+        <option value="geo_incerta">Localização aproximada</option>
       </select>
       <select id="err-filter-van" onchange="renderErros()" style="font-size:11px;height:28px;border:1px solid #d1d5db;border-radius:4px;padding:0 6px">
         <option value="">Todas as vans</option>
@@ -1821,7 +1823,7 @@ async function geocodeNovo(id){
   let changed=false;
   if(!r.lat_casa||!r.lon_casa){
     const res=await geocodeCascade(r,'casa',msg=>showToast('🔍 '+msg));
-    if(res){r.lat_casa=res.lat;r.lon_casa=res.lng;r._modified=true;changed=true;}
+    if(res){r.lat_casa=res.lat;r.lon_casa=res.lng;r.geo_casa_confianca=res.confianca||'media';r.geo_casa_source=res.source||'';r._modified=true;changed=true;}
   }
   // Embarque nunca geocodificado automaticamente
   if(changed){markDirty();updateLI(r._id);updateNovosBadge();renderNovos();renderMap();}
@@ -1838,7 +1840,7 @@ async function geocodeAllNovos(){
     if(!r.lat_casa||!r.lon_casa){
       try{
         const res=await geocodeCascade(r,'casa',msg=>{document.getElementById('geo-sub').textContent=msg;});
-        if(res){r.lat_casa=res.lat;r.lon_casa=res.lng;r._modified=true;}else fail++;
+        if(res){r.lat_casa=res.lat;r.lon_casa=res.lng;r.geo_casa_confianca=res.confianca||'media';r.geo_casa_source=res.source||'';r._modified=true;}else fail++;
       }catch{fail++;}
     }
     // Embarque nunca geocodificado automaticamente — usar clique direito no mapa
@@ -3632,7 +3634,7 @@ async function geocodeCascade(r,type,onStatus){
         callNom(termoBlindado),
       ]);
       const vRes=vArc||vNom;
-      if(vRes){libSet(r.endereco,cidade,vRes.lat,vRes.lng);return{...vRes,source:vArc?'ArcGIS+CEP':'Nominatim+CEP'};}
+      if(vRes){libSet(r.endereco,cidade,vRes.lat,vRes.lng);return{...vRes,source:vArc?'ArcGIS+CEP':'Nominatim+CEP',confianca:'alta'};}
     }
 
     // ── PASSO 3: ArcGIS direto (sem chave, ótimo cobertura Brasil) ──
@@ -3642,7 +3644,7 @@ async function geocodeCascade(r,type,onStatus){
       callArcGIS(`${ruaSA}${num?', '+num:''}, ${cidade}, Parana, Brazil`),
     ]);
     const rArc=arcA||arcB;
-    if(rArc){libSet(r.endereco,cidade,rArc.lat,rArc.lng);return{...rArc,source:'ArcGIS'};}
+    if(rArc){libSet(r.endereco,cidade,rArc.lat,rArc.lng);return{...rArc,source:'ArcGIS',confianca:'alta'};}
 
     // ── PASSO 4: Nominatim com e sem acento em paralelo ──
     onStatus('Nominatim...');
@@ -3653,18 +3655,18 @@ async function geocodeCascade(r,type,onStatus){
       callNom(`${ruaSA}${num?', '+num:''}, ${cidade}, ${uf}, Brasil`),
     ]);
     const rNom=na||nb||nc||nd;
-    if(rNom){libSet(r.endereco,cidade,rNom.lat,rNom.lng);return{...rNom,source:'Nominatim'};}
+    if(rNom){libSet(r.endereco,cidade,rNom.lat,rNom.lng);return{...rNom,source:'Nominatim',confianca:'media'};}
 
     // ── PASSO 5: Photon ──
     onStatus('Photon...');
     const rPho=await callPhoton(`${ruaTit}${num?', '+num:''}, ${cidade}, Paraná`);
-    if(rPho){libSet(r.endereco,cidade,rPho.lat,rPho.lng);return{...rPho,source:'Photon'};}
+    if(rPho){libSet(r.endereco,cidade,rPho.lat,rPho.lng);return{...rPho,source:'Photon',confianca:'media'};}
 
     // ── PASSO 6: HERE Maps (se chave configurada) ──
     if(openCageKey){
       onStatus('HERE Maps...');
       const rHere=await callHERE(`${ruaTit}${num?', '+num:''}, ${cidade}, Paraná, Brasil`);
-      if(rHere){libSet(r.endereco,cidade,rHere.lat,rHere.lng);return{...rHere,source:'HERE Maps'};}
+      if(rHere){libSet(r.endereco,cidade,rHere.lat,rHere.lng);return{...rHere,source:'HERE Maps',confianca:'media'};}
     }
 
     // ── PASSO 7: Fallbacks aproximados (sem número) ──
@@ -3675,14 +3677,14 @@ async function geocodeCascade(r,type,onStatus){
         callNom(`${ruaTit}, ${bairro}, ${cidade}, ${uf}, Brasil`),
       ]);
       const rAprox=fa||fb;
-      if(rAprox){libSet(r.endereco,cidade,rAprox.lat,rAprox.lng);return{...rAprox,source:'Aprox. (sem nº)',approximate:true};}
+      if(rAprox){libSet(r.endereco,cidade,rAprox.lat,rAprox.lng);return{...rAprox,source:'Aprox. (sem nº)',approximate:true,confianca:'baixa'};}
     }
 
     // ── PASSO 8: Só CEP (centro da rua — backup) ──
     if(cepData){
       onStatus('CEP (backup)...');
       const rCep=await callNom(`${cepData.cep}, ${cidade}, Brasil`);
-      if(rCep){libSet(r.endereco,cidade,rCep.lat,rCep.lng);return{...rCep,source:'CEP (centro)',approximate:true};}
+      if(rCep){libSet(r.endereco,cidade,rCep.lat,rCep.lng);return{...rCep,source:'CEP (centro)',approximate:true,confianca:'baixa'};}
     }
 
     return null;
@@ -7300,6 +7302,15 @@ function detectarErros(){
       }
     }
 
+    // 7. Coordenada de residência com baixa confiança (geocodificação aproximada)
+    if(hasCasaCoord && r.geo_casa_confianca === 'baixa'){
+      erros.push({ tipo:'geo_incerta', r,
+        icon:'🎯', badge:'geo-incerta',
+        titulo:`Localização aproximada — confirmar`,
+        desc:`${r.nome}: "${r.endereco||'—'}" foi geocodificado de forma aproximada via ${r.geo_casa_source||'—'}. Abra o cadastro e verifique o pino no mapa.`,
+        meta:`${r.van} · lat ${r.lat_casa?.toFixed(5)}, lon ${r.lon_casa?.toFixed(5)}` });
+    }
+
     // 6. Embarque outlier do cluster da van
     const stats = vanEmbStats[van];
     if(hasEmbCoord && stats){
@@ -7390,7 +7401,7 @@ function renderErros(){
       const isVal = !!errosValidados[key];
       const cor = {
         embarque_longe:'#fef3c7', cluster_outlier:'#ede9fe',
-        sem_coords:'#fee2e2', coord_invalida:'#ffedd5', casa_fora_pr:'#e0f2fe'
+        sem_coords:'#fee2e2', coord_invalida:'#ffedd5', casa_fora_pr:'#e0f2fe', geo_incerta:'#fef9c3'
       }[e.tipo]||'#f9fafb';
       return `<div class="err-item${isVal?' validado':''}" style="border-left:3px solid ${isVal?'#16a34a':cor.replace('f','d')}">
         <div class="err-icon">${e.icon}</div>
@@ -7426,7 +7437,8 @@ function renderErros(){
 
 function tipoLabel(tipo){
   return {embarque_longe:'emb. longe',cluster_outlier:'outlier cluster',
-    sem_coords:'sem coord',sem_embarque:'sem embarque',coord_invalida:'coord. inválida',casa_fora_pr:'fora PR'}[tipo]||tipo;
+    sem_coords:'sem coord',sem_embarque:'sem embarque',coord_invalida:'coord. inválida',casa_fora_pr:'fora PR',
+    geo_incerta:'localiz. aproximada'}[tipo]||tipo;
 }
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerador de Licença — Platner System</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: Arial, sans-serif; background: #0f172a; color: #f1f5f9; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.card { background: #1e293b; border-radius: 16px; padding: 36px 40px; width: 100%; max-width: 520px; box-shadow: 0 8px 40px rgba(0,0,0,.5); }
+.logo { font-size: 13px; color: #64748b; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+h1 { font-size: 20px; font-weight: 800; color: #f1f5f9; margin-bottom: 28px; }
+label { display: block; font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 6px; }
+input, select { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #f1f5f9; font-size: 14px; margin-bottom: 18px; outline: none; transition: border-color .15s; }
+input:focus, select:focus { border-color: #2563eb; }
+select option { background: #1e293b; }
+.btn { width: 100%; padding: 13px; border-radius: 8px; background: #2563eb; color: #fff; font-size: 14px; font-weight: 700; border: none; cursor: pointer; transition: background .15s; margin-bottom: 10px; }
+.btn:hover { background: #1d4ed8; }
+.btn:disabled { background: #334155; cursor: not-allowed; }
+.btn-danger { background: #dc2626; }
+.btn-danger:hover { background: #b91c1c; }
+.result-box { background: #0f172a; border: 1px solid #334155; border-radius: 10px; padding: 20px; margin-top: 22px; display: none; }
+.result-box.show { display: block; }
+.token-display { font-family: monospace; font-size: 20px; font-weight: 700; color: #60a5fa; letter-spacing: 3px; text-align: center; padding: 14px; background: #1e293b; border-radius: 8px; margin-bottom: 12px; cursor: pointer; border: 2px solid transparent; transition: border-color .15s; }
+.token-display:hover { border-color: #2563eb; }
+.copy-hint { font-size: 11px; color: #475569; text-align: center; margin-bottom: 16px; }
+.meta { font-size: 12px; color: #64748b; line-height: 1.8; }
+.meta span { color: #94a3b8; }
+.sep { border: none; border-top: 1px solid #334155; margin: 24px 0; }
+.section-title { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 14px; }
+.config-toggle { font-size: 11px; color: #475569; cursor: pointer; text-decoration: underline; text-align: right; margin-bottom: 8px; }
+.config-area { display: none; }
+.config-area.open { display: block; }
+.msg { font-size: 12px; padding: 8px 12px; border-radius: 6px; margin-top: 8px; }
+.msg.ok { background: rgba(22,163,74,.2); color: #86efac; }
+.msg.err { background: rgba(220,38,38,.2); color: #fca5a5; }
+.tokens-list { margin-top: 8px; max-height: 220px; overflow-y: auto; }
+.tok-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #1e293b; font-size: 12px; }
+.tok-row:last-child { border-bottom: none; }
+.tok-code { font-family: monospace; color: #60a5fa; font-size: 11px; flex: 1; }
+.tok-info { color: #64748b; font-size: 11px; }
+.tok-status { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
+.tok-status.active { background: rgba(22,163,74,.25); color: #86efac; }
+.tok-status.expired { background: rgba(220,38,38,.2); color: #fca5a5; }
+.tok-status.disabled { background: rgba(100,116,139,.2); color: #94a3b8; }
+.btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 5px; border: none; cursor: pointer; font-weight: 600; }
+.btn-revoke { background: rgba(220,38,38,.25); color: #fca5a5; }
+.btn-revoke:hover { background: rgba(220,38,38,.5); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Platner System</div>
+  <h1>🔑 Gerador de Licença</h1>
+
+  <!-- CONFIGURAÇÃO (PAT + Gist) -->
+  <div class="config-toggle" onclick="toggleConfig()">⚙️ Configurações do Gist</div>
+  <div class="config-area" id="config-area">
+    <div class="section-title">Autenticação GitHub</div>
+    <label>GitHub Personal Access Token (escopo: gist)</label>
+    <input type="password" id="pat-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" oninput="savePAT()">
+    <label>ID do Gist</label>
+    <input type="text" id="gist-id-input" placeholder="feee90d324a59d7553c3d73bacaf7878" oninput="saveGistId()">
+    <div style="font-size:11px;color:#475569;margin-top:-12px;margin-bottom:18px">
+      Gere o PAT em github.com → Settings → Developer settings → Personal access tokens → escopo <strong>gist</strong>
+    </div>
+    <hr class="sep" style="margin-top:0">
+  </div>
+
+  <!-- GERADOR -->
+  <div class="section-title">Novo Token</div>
+  <label>Nome do cliente / empresa</label>
+  <input type="text" id="nome" placeholder="Ex: Transportadora ABC">
+
+  <label>Acesso válido por</label>
+  <select id="dias">
+    <option value="30">30 dias</option>
+    <option value="60">60 dias</option>
+    <option value="90">90 dias (3 meses)</option>
+    <option value="180">180 dias (6 meses)</option>
+    <option value="365" selected>365 dias (1 ano)</option>
+  </select>
+
+  <button class="btn" id="btn-gerar" onclick="gerarToken()">⚡ Gerar e salvar no Gist</button>
+
+  <!-- RESULTADO -->
+  <div class="result-box" id="result-box">
+    <div class="section-title">Token gerado — clique para copiar</div>
+    <div class="token-display" id="token-display" onclick="copiarToken()"></div>
+    <div class="copy-hint" id="copy-hint">Clique no token para copiar</div>
+    <div class="meta" id="meta-info"></div>
+  </div>
+
+  <hr class="sep">
+
+  <!-- LISTA DE TOKENS -->
+  <div class="section-title">Tokens Ativos</div>
+  <button class="btn" style="background:#1e3a5f;margin-bottom:10px" onclick="carregarTokens()">↻ Carregar lista do Gist</button>
+  <div id="tokens-list-area"></div>
+</div>
+
+<script>
+const GIST_API = 'https://api.github.com/gists/';
+const FILE_NAME = 'tokens_html.json';
+
+function getPAT()    { return document.getElementById('pat-input').value.trim() || localStorage.getItem('_pgen_pat') || ''; }
+function getGistId() { return document.getElementById('gist-id-input').value.trim() || localStorage.getItem('_pgen_gist') || 'feee90d324a59d7553c3d73bacaf7878'; }
+function savePAT()   { localStorage.setItem('_pgen_pat', document.getElementById('pat-input').value.trim()); }
+function saveGistId(){ localStorage.setItem('_pgen_gist', document.getElementById('gist-id-input').value.trim()); }
+
+function toggleConfig() {
+  var el = document.getElementById('config-area');
+  el.classList.toggle('open');
+}
+
+// Carrega configurações salvas
+window.onload = function() {
+  var pat = localStorage.getItem('_pgen_pat') || '';
+  var gid = localStorage.getItem('_pgen_gist') || '';
+  if (pat) document.getElementById('pat-input').value = pat;
+  if (gid) document.getElementById('gist-id-input').value = gid;
+};
+
+function gerarTokenStr() {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem O,0,I,1 para evitar confusão
+  var tok = '';
+  for (var i = 0; i < 25; i++) {
+    if (i > 0 && i % 5 === 0) tok += '-';
+    tok += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return tok;
+}
+
+function dataExpiracao(dias) {
+  var d = new Date();
+  d.setDate(d.getDate() + parseInt(dias));
+  return d.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+async function fetchGist() {
+  var pat = getPAT();
+  var gid = getGistId();
+  var headers = { 'Accept': 'application/vnd.github+json' };
+  if (pat) headers['Authorization'] = 'Bearer ' + pat;
+  var r = await fetch(GIST_API + gid, { headers });
+  if (!r.ok) throw new Error('Erro ao buscar Gist: ' + r.status);
+  var data = await r.json();
+  var content = data.files[FILE_NAME]?.content;
+  if (!content) return { tokens: {} };
+  return JSON.parse(content);
+}
+
+async function saveGist(payload) {
+  var pat = getPAT();
+  var gid = getGistId();
+  if (!pat) throw new Error('PAT não configurado. Configure em "Configurações do Gist".');
+  var body = { files: {} };
+  body.files[FILE_NAME] = { content: JSON.stringify(payload, null, 2) };
+  var r = await fetch(GIST_API + gid, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': 'Bearer ' + pat,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('Erro ao salvar no Gist: ' + r.status);
+}
+
+async function gerarToken() {
+  var nome = document.getElementById('nome').value.trim();
+  var dias = document.getElementById('dias').value;
+  if (!nome) { alert('Preencha o nome do cliente.'); return; }
+
+  var btn = document.getElementById('btn-gerar');
+  btn.disabled = true;
+  btn.textContent = 'Gerando...';
+
+  try {
+    var atual = await fetchGist();
+    var tok = gerarTokenStr();
+    var expira = dataExpiracao(dias);
+
+    atual.tokens = atual.tokens || {};
+    atual.tokens[tok] = { nome: nome, expira: expira, ativo: true };
+
+    await saveGist(atual);
+
+    // Exibe resultado
+    document.getElementById('token-display').textContent = tok;
+    document.getElementById('meta-info').innerHTML =
+      '<span>Cliente:</span> ' + nome + '<br>' +
+      '<span>Expira:</span> ' + expira + ' (' + dias + ' dias)<br>' +
+      '<span>Status:</span> Ativo';
+    document.getElementById('result-box').classList.add('show');
+    document.getElementById('copy-hint').textContent = 'Clique no token para copiar';
+    document.getElementById('nome').value = '';
+
+  } catch(e) {
+    alert('Erro: ' + e.message);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '⚡ Gerar e salvar no Gist';
+}
+
+function copiarToken() {
+  var tok = document.getElementById('token-display').textContent;
+  navigator.clipboard.writeText(tok).then(function() {
+    document.getElementById('copy-hint').textContent = '✓ Copiado!';
+    setTimeout(function() {
+      document.getElementById('copy-hint').textContent = 'Clique no token para copiar';
+    }, 2000);
+  });
+}
+
+async function revogarToken(tok) {
+  if (!confirm('Revogar token ' + tok + '?\n\nO cliente perderá acesso imediatamente.')) return;
+  try {
+    var atual = await fetchGist();
+    if (atual.tokens && atual.tokens[tok]) {
+      atual.tokens[tok].ativo = false;
+    }
+    await saveGist(atual);
+    carregarTokens();
+  } catch(e) {
+    alert('Erro: ' + e.message);
+  }
+}
+
+async function carregarTokens() {
+  var area = document.getElementById('tokens-list-area');
+  area.innerHTML = '<div style="color:#64748b;font-size:12px">Carregando...</div>';
+  try {
+    var data = await fetchGist();
+    var tokens = data.tokens || {};
+    var keys = Object.keys(tokens);
+    if (keys.length === 0) {
+      area.innerHTML = '<div style="color:#475569;font-size:12px">Nenhum token cadastrado.</div>';
+      return;
+    }
+    var hoje = new Date();
+    var html = '<div class="tokens-list">';
+    keys.forEach(function(tok) {
+      var t = tokens[tok];
+      var expira = new Date(t.expira + 'T23:59:59');
+      var status = !t.ativo ? 'disabled' : (expira < hoje ? 'expired' : 'active');
+      var statusLabel = { active: 'Ativo', expired: 'Expirado', disabled: 'Revogado' }[status];
+      html += '<div class="tok-row">' +
+        '<div><div class="tok-code">' + tok + '</div>' +
+        '<div class="tok-info">' + (t.nome || '—') + ' · ' + t.expira + '</div></div>' +
+        '<span class="tok-status ' + status + '">' + statusLabel + '</span>' +
+        (status === 'active' ? '<button class="btn-sm btn-revoke" onclick="revogarToken(\'' + tok + '\')">Revogar</button>' : '') +
+        '</div>';
+    });
+    html += '</div>';
+    area.innerHTML = html;
+  } catch(e) {
+    area.innerHTML = '<div class="msg err">Erro ao carregar: ' + e.message + '</div>';
+  }
+}
+</script>
+</body>
+</html>

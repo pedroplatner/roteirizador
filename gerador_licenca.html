@@ -64,6 +64,11 @@ select option { background: #1e293b; }
     <div style="font-size:11px;color:#475569;margin-top:-12px;margin-bottom:18px">
       Gere o PAT em github.com → Settings → Developer settings → Personal access tokens → escopo <strong>gist</strong>
     </div>
+    <label>URL do Apps Script (Google Sheets — global)</label>
+    <input type="text" id="sheets-url-input" placeholder="https://script.google.com/macros/s/..." oninput="saveSheetsUrl()">
+    <div style="font-size:11px;color:#475569;margin-top:-12px;margin-bottom:18px">
+      URL do Web App do Apps Script configurado na planilha. Igual para todos os clientes.
+    </div>
     <hr class="sep" style="margin-top:0">
   </div>
 
@@ -71,6 +76,12 @@ select option { background: #1e293b; }
   <div class="section-title">Novo Token</div>
   <label>Nome do cliente / empresa</label>
   <input type="text" id="nome" placeholder="Ex: Transportadora ABC">
+
+  <label>ID da Planilha Google Sheets (opcional)</label>
+  <input type="text" id="sheet-id" placeholder="Cole o ID ou URL completa da planilha do cliente">
+  <div style="font-size:11px;color:#475569;margin-top:-14px;margin-bottom:18px">
+    Crie a planilha no Google Sheets → copie o ID da URL → cole aqui. O sistema do cliente vai conectar automaticamente.
+  </div>
 
   <label>Acesso válido por</label>
   <select id="dias">
@@ -103,10 +114,16 @@ select option { background: #1e293b; }
 const GIST_API = 'https://api.github.com/gists/';
 const FILE_NAME = 'tokens_html.json';
 
-function getPAT()    { return document.getElementById('pat-input').value.trim() || localStorage.getItem('_pgen_pat') || ''; }
-function getGistId() { return document.getElementById('gist-id-input').value.trim() || localStorage.getItem('_pgen_gist') || 'feee90d324a59d7553c3d73bacaf7878'; }
-function savePAT()   { localStorage.setItem('_pgen_pat', document.getElementById('pat-input').value.trim()); }
-function saveGistId(){ localStorage.setItem('_pgen_gist', document.getElementById('gist-id-input').value.trim()); }
+function getPAT()       { return document.getElementById('pat-input').value.trim() || localStorage.getItem('_pgen_pat') || ''; }
+function getGistId()    { return document.getElementById('gist-id-input').value.trim() || localStorage.getItem('_pgen_gist') || 'feee90d324a59d7553c3d73bacaf7878'; }
+function savePAT()      { localStorage.setItem('_pgen_pat', document.getElementById('pat-input').value.trim()); }
+function saveGistId()   { localStorage.setItem('_pgen_gist', document.getElementById('gist-id-input').value.trim()); }
+function saveSheetsUrl(){ localStorage.setItem('_pgen_sheets_url', document.getElementById('sheets-url-input').value.trim()); }
+
+function extractSheetId(val) {
+  var match = val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : val.trim();
+}
 
 function toggleConfig() {
   var el = document.getElementById('config-area');
@@ -117,8 +134,10 @@ function toggleConfig() {
 window.onload = function() {
   var pat = localStorage.getItem('_pgen_pat') || '';
   var gid = localStorage.getItem('_pgen_gist') || '';
+  var su  = localStorage.getItem('_pgen_sheets_url') || '';
   if (pat) document.getElementById('pat-input').value = pat;
   if (gid) document.getElementById('gist-id-input').value = gid;
+  if (su)  document.getElementById('sheets-url-input').value = su;
 };
 
 function gerarTokenStr() {
@@ -169,8 +188,12 @@ async function saveGist(payload) {
 }
 
 async function gerarToken() {
-  var nome = document.getElementById('nome').value.trim();
-  var dias = document.getElementById('dias').value;
+  var nome    = document.getElementById('nome').value.trim();
+  var dias    = document.getElementById('dias').value;
+  var sheetRaw = document.getElementById('sheet-id').value.trim();
+  var sheetId = sheetRaw ? extractSheetId(sheetRaw) : '';
+  var sheetsUrl = (document.getElementById('sheets-url-input').value.trim() || localStorage.getItem('_pgen_sheets_url') || '').trim();
+
   if (!nome) { alert('Preencha o nome do cliente.'); return; }
 
   var btn = document.getElementById('btn-gerar');
@@ -183,7 +206,13 @@ async function gerarToken() {
     var expira = dataExpiracao(dias);
 
     atual.tokens = atual.tokens || {};
-    atual.tokens[tok] = { nome: nome, expira: expira, ativo: true };
+    var entry = { nome: nome, expira: expira, ativo: true };
+    if (sheetId)   entry.sheet_id   = sheetId;
+    if (sheetsUrl) entry.sheets_url = sheetsUrl;
+    atual.tokens[tok] = entry;
+
+    // Salva sheets_url global no Gist para referência
+    if (sheetsUrl) atual.sheets_url = sheetsUrl;
 
     await saveGist(atual);
 
@@ -192,10 +221,12 @@ async function gerarToken() {
     document.getElementById('meta-info').innerHTML =
       '<span>Cliente:</span> ' + nome + '<br>' +
       '<span>Expira:</span> ' + expira + ' (' + dias + ' dias)<br>' +
+      '<span>Planilha:</span> ' + (sheetId || '— (não vinculada)') + '<br>' +
       '<span>Status:</span> Ativo';
     document.getElementById('result-box').classList.add('show');
     document.getElementById('copy-hint').textContent = 'Clique no token para copiar';
     document.getElementById('nome').value = '';
+    document.getElementById('sheet-id').value = '';
 
   } catch(e) {
     alert('Erro: ' + e.message);
@@ -247,9 +278,10 @@ async function carregarTokens() {
       var expira = new Date(t.expira + 'T23:59:59');
       var status = !t.ativo ? 'disabled' : (expira < hoje ? 'expired' : 'active');
       var statusLabel = { active: 'Ativo', expired: 'Expirado', disabled: 'Revogado' }[status];
+      var sheetsInfo = t.sheet_id ? ' · 📊 Sheets' : '';
       html += '<div class="tok-row">' +
         '<div><div class="tok-code">' + tok + '</div>' +
-        '<div class="tok-info">' + (t.nome || '—') + ' · ' + t.expira + '</div></div>' +
+        '<div class="tok-info">' + (t.nome || '—') + ' · ' + t.expira + sheetsInfo + '</div></div>' +
         '<span class="tok-status ' + status + '">' + statusLabel + '</span>' +
         (status === 'active' ? '<button class="btn-sm btn-revoke" onclick="revogarToken(\'' + tok + '\')">Revogar</button>' : '') +
         '</div>';

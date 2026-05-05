@@ -62,6 +62,7 @@
           .then(function(d) {
             if (d.ok) {
               localStorage.setItem(TOK_KEY, tok);
+              applySheetConfig(d.sheet_id, d.sheets_url);
               document.getElementById('_guard_ov').remove();
               document.body.style.overflow = '';
             } else {
@@ -97,8 +98,20 @@
         if (!entry.ativo) return { ok: false, msg: 'Token desativado pelo administrador.' };
         var expira = new Date(entry.expira + 'T23:59:59');
         if (expira < new Date()) return { ok: false, msg: 'Acesso expirado. Entre em contato para renovar.' };
-        return { ok: true };
+        return {
+          ok: true,
+          sheet_id:   entry.sheet_id   || '',
+          sheets_url: entry.sheets_url || data.sheets_url || ''
+        };
       });
+  }
+
+  function applySheetConfig(sheet_id, sheets_url) {
+    if (!sheet_id && !sheets_url) return;
+    try {
+      if (sheet_id)   localStorage.setItem('rotas_sheet_id_v1', sheet_id);
+      if (sheets_url) localStorage.setItem('rotas_sheets_url_v1', sheets_url);
+    } catch(e) {}
   }
 
   function check() {
@@ -112,7 +125,9 @@
     // Valida no servidor a cada abertura — sem internet bloqueia sempre
     validateToken(tok)
       .then(function(d) {
-        if (!d.ok) {
+        if (d.ok) {
+          applySheetConfig(d.sheet_id, d.sheets_url);
+        } else {
           localStorage.removeItem(TOK_KEY);
           var podeDigitar = !d.msg || !d.msg.toLowerCase().includes('desativado');
           showBlock(d.msg || 'Acesso expirado ou revogado.', podeDigitar);

@@ -69,6 +69,11 @@ select option { background: #1e293b; }
     <div style="font-size:11px;color:#475569;margin-top:-12px;margin-bottom:18px">
       URL do Web App do Apps Script configurado na planilha. Igual para todos os clientes.
     </div>
+    <label>URL do Webhook n8n</label>
+    <input type="text" id="n8n-url-input" placeholder="https://seu-n8n.com/webhook/binho-criar-planilha" oninput="saveN8nUrl()">
+    <div style="font-size:11px;color:#475569;margin-top:-12px;margin-bottom:18px">
+      Quando preenchido, cria a planilha automaticamente ao gerar o token.
+    </div>
     <hr class="sep" style="margin-top:0">
   </div>
 
@@ -77,10 +82,10 @@ select option { background: #1e293b; }
   <label>Nome do cliente / empresa</label>
   <input type="text" id="nome" placeholder="Ex: Transportadora ABC">
 
-  <label>ID da Planilha Google Sheets (opcional)</label>
-  <input type="text" id="sheet-id" placeholder="Cole o ID ou URL completa da planilha do cliente">
+  <label>ID da Planilha Google Sheets</label>
+  <input type="text" id="sheet-id" placeholder="Deixe vazio para criar automaticamente via n8n">
   <div style="font-size:11px;color:#475569;margin-top:-14px;margin-bottom:18px">
-    Crie a planilha no Google Sheets → copie o ID da URL → cole aqui. O sistema do cliente vai conectar automaticamente.
+    Se o webhook n8n estiver configurado, a planilha é criada automaticamente — não precisa preencher.
   </div>
 
   <label>Acesso válido por</label>
@@ -119,10 +124,26 @@ function getGistId()    { return document.getElementById('gist-id-input').value.
 function savePAT()      { localStorage.setItem('_pgen_pat', document.getElementById('pat-input').value.trim()); }
 function saveGistId()   { localStorage.setItem('_pgen_gist', document.getElementById('gist-id-input').value.trim()); }
 function saveSheetsUrl(){ localStorage.setItem('_pgen_sheets_url', document.getElementById('sheets-url-input').value.trim()); }
+function saveN8nUrl()  { localStorage.setItem('_pgen_n8n_url',    document.getElementById('n8n-url-input').value.trim()); }
+function getN8nUrl()   { return (document.getElementById('n8n-url-input').value.trim() || localStorage.getItem('_pgen_n8n_url') || '').trim(); }
 
 function extractSheetId(val) {
   var match = val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
   return match ? match[1] : val.trim();
+}
+
+async function criarPlanilhaN8n(nome) {
+  var url = getN8nUrl();
+  if (!url) return null;
+  var r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome: nome })
+  });
+  if (!r.ok) throw new Error('n8n retornou erro ' + r.status);
+  var d = await r.json();
+  if (!d.ok || !d.sheet_id) throw new Error('n8n não retornou sheet_id');
+  return d;
 }
 
 function toggleConfig() {
@@ -138,6 +159,8 @@ window.onload = function() {
   if (pat) document.getElementById('pat-input').value = pat;
   if (gid) document.getElementById('gist-id-input').value = gid;
   if (su)  document.getElementById('sheets-url-input').value = su;
+  var n8n = localStorage.getItem('_pgen_n8n_url') || '';
+  if (n8n) document.getElementById('n8n-url-input').value = n8n;
 };
 
 function gerarTokenStr() {
@@ -200,7 +223,18 @@ async function gerarToken() {
   btn.disabled = true;
   btn.textContent = 'Gerando...';
 
+  var sheetUrl = '';
+
   try {
+    // Se não tem sheet_id manual e tem n8n configurado → cria planilha automaticamente
+    if (!sheetId && getN8nUrl()) {
+      btn.textContent = 'Criando planilha...';
+      var n8nRes = await criarPlanilhaN8n(nome);
+      sheetId  = n8nRes.sheet_id;
+      sheetUrl = n8nRes.sheet_url || '';
+    }
+
+    btn.textContent = 'Salvando no Gist...';
     var atual = await fetchGist();
     var tok = gerarTokenStr();
     var expira = dataExpiracao(dias);
@@ -211,7 +245,6 @@ async function gerarToken() {
     if (sheetsUrl) entry.sheets_url = sheetsUrl;
     atual.tokens[tok] = entry;
 
-    // Salva sheets_url global no Gist para referência
     if (sheetsUrl) atual.sheets_url = sheetsUrl;
 
     await saveGist(atual);
@@ -221,7 +254,9 @@ async function gerarToken() {
     document.getElementById('meta-info').innerHTML =
       '<span>Cliente:</span> ' + nome + '<br>' +
       '<span>Expira:</span> ' + expira + ' (' + dias + ' dias)<br>' +
-      '<span>Planilha:</span> ' + (sheetId || '— (não vinculada)') + '<br>' +
+      '<span>Planilha:</span> ' + (sheetUrl
+        ? '<a href="' + sheetUrl + '" target="_blank" style="color:#60a5fa">Abrir no Google Sheets ↗</a>'
+        : (sheetId || '— (não vinculada)')) + '<br>' +
       '<span>Status:</span> Ativo';
     document.getElementById('result-box').classList.add('show');
     document.getElementById('copy-hint').textContent = 'Clique no token para copiar';

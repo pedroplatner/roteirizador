@@ -1,0 +1,83 @@
+{
+  "name": "Binho — Criar Planilha Cliente",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "binho-criar-planilha",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "binho-criar-planilha"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "create",
+        "name": "={{ $json.body.nome }} — Rotas Caterpillar",
+        "mimeType": "application/vnd.google-apps.spreadsheet",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Criar Planilha no Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [460, 300],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "COLE_ID_DA_CREDENCIAL_AQUI",
+          "name": "Google Drive — Binho"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"ok\": true,\n  \"sheet_id\": \"{{ $json.id }}\",\n  \"sheet_url\": \"https://docs.google.com/spreadsheets/d/{{ $json.id }}/edit\",\n  \"nome\": \"{{ $('Webhook').item.json.body.nome }}\"\n}",
+        "options": {}
+      },
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Criar Planilha no Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Criar Planilha no Drive": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

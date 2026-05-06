@@ -111,6 +111,10 @@
     try {
       if (sheet_id)   localStorage.setItem('rotas_sheet_id_v1', sheet_id);
       if (sheets_url) localStorage.setItem('rotas_sheets_url_v1', sheets_url);
+      // Atualiza variáveis em memória e conecta automaticamente
+      if (typeof window._applySheetConfigLive === 'function') {
+        window._applySheetConfigLive(sheet_id, sheets_url);
+      }
     } catch(e) {}
   }
 
@@ -1889,6 +1893,22 @@ const TIPO_CAP={'VAN':15,'MICRO':30,'ONIBUS':48,'CUSTOM':0};
 let sheetsUrl=localStorage.getItem(SK_SHEETS)||'';
 let sheetId = '' || localStorage.getItem(SK_SHEETID) || '';
 let openCageKey=localStorage.getItem(SK_OPENCAGE)||'';
+
+// Chamado pelo sistema de token após validação — atualiza memória e conecta automaticamente
+window._applySheetConfigLive = function(sheet_id, sheets_url) {
+  if (sheet_id)   { sheetId   = sheet_id;   localStorage.setItem(SK_SHEETID, sheet_id); }
+  if (sheets_url) { sheetsUrl = sheets_url; localStorage.setItem(SK_SHEETS, sheets_url); }
+  if (sheetsUrl && sheetId) {
+    // Pequeno delay para garantir que o DOM está pronto
+    setTimeout(function() {
+      const urlEl = document.getElementById('sheets-url');
+      const sidEl = document.getElementById('sheet-id-input');
+      if (urlEl) urlEl.value = sheetsUrl;
+      if (sidEl) sidEl.value = sheetId;
+      connectSheets();
+    }, 1000);
+  }
+};
 
 function saveOpenCageKey(){
   const val=(document.getElementById('opencage-key')?.value||'').trim();

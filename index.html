@@ -2043,19 +2043,25 @@ function syncToSheets(){
 }
 
 function showSheetsHelp(errDetail){
-  const scriptCode=`// Cole este código no Apps Script da sua planilha
+  const scriptCode=`// Apps Script Central — Platner System (planilha mestre do Binho)
 const SHEET_NAME='dados', META_NAME='meta';
 const FIELDS=['ordem','num_parada','matricula','nome','endereco','bairro',
   'cidade','embarque','horario','dist_casa_emb','rota',
   'lat_casa','lon_casa','lat_emb','lon_emb','sheet','van','_modified'];
 
+function getSpreadsheet(sheetId){
+  return sheetId ? SpreadsheetApp.openById(sheetId) : SpreadsheetApp.getActiveSpreadsheet();
+}
+
 function doGet(e){
-  const p=e.parameter||{},a=p.action||'',cb=p.callback||'cb';
+  const p=e.parameter||{}, a=p.action||'', cb=p.callback||'cb';
+  const sheetId=p.sheetId||'';
   let r;
   try{
-    if(a==='ping') r={ok:true,ts:Date.now()};
-    else if(a==='load') r=loadData();
-    else if(a==='verifyLastSave') r=verifyLastSave();
+    if(!sheetId && a!=='ping') r={ok:false,error:'sheetId nao informado'};
+    else if(a==='ping') r={ok:true,ts:Date.now()};
+    else if(a==='load') r=loadData(sheetId);
+    else if(a==='verifyLastSave') r=verifyLastSave(sheetId);
     else r={ok:false,error:'unknown action'};
   }catch(err){r={ok:false,error:err.message};}
   return ContentService.createTextOutput(cb+'('+JSON.stringify(r)+')')
@@ -2070,10 +2076,10 @@ function doPost(e){
   return ContentService.createTextOutput(JSON.stringify(r))
     .setMimeType(ContentService.MimeType.JSON);
 }
-function loadData(){
-  const ss=SpreadsheetApp.getActiveSpreadsheet();
-  const sh=getOrCreate(ss,SHEET_NAME),me=getOrCreate(ss,META_NAME);
-  const last=sh.getLastRow(),recs=[];
+function loadData(sheetId){
+  const ss=getSpreadsheet(sheetId);
+  const sh=getOrCreate(ss,SHEET_NAME), me=getOrCreate(ss,META_NAME);
+  const last=sh.getLastRow(), recs=[];
   if(last>=2){
     sh.getRange(2,1,last-1,FIELDS.length).getValues().forEach(row=>{
       if(!row[0]&&!row[2]&&!row[3])return;
@@ -2085,16 +2091,16 @@ function loadData(){
         else v=(v==null)?'':String(v).trim();
         rec[f]=v;
       });
-      rec._modified=false;recs.push(rec);
+      rec._modified=false; recs.push(rec);
     });
   }
   return{ok:true,records:recs,
     vanDestTimes:readMeta(me,'vanDestTimes')||{},
-    changeHistory:readMeta(me,'changeHistory')||[],count:recs.length};
+    changeHistory:readMeta(me,'changeHistory')||[], count:recs.length};
 }
 function saveData(body){
-  const ss=SpreadsheetApp.getActiveSpreadsheet();
-  const sh=getOrCreate(ss,SHEET_NAME),me=getOrCreate(ss,META_NAME);
+  const ss=getSpreadsheet(body.sheetId||'');
+  const sh=getOrCreate(ss,SHEET_NAME), me=getOrCreate(ss,META_NAME);
   sh.getRange(1,1,1,FIELDS.length).setValues([FIELDS.map(f=>f.toUpperCase())]);
   const last=sh.getLastRow();
   if(last>1) sh.getRange(2,1,last-1,FIELDS.length).clearContent();
@@ -2111,19 +2117,25 @@ function saveData(body){
   writeMeta(me,'lastSaveCount',recs.length);
   return{ok:true,saved:recs.length};
 }
-function verifyLastSave(){
-  const me=getOrCreate(SpreadsheetApp.getActiveSpreadsheet(),META_NAME);
+function verifyLastSave(sheetId){
+  const me=getOrCreate(getSpreadsheet(sheetId),META_NAME);
   return{ok:true,ts:readMeta(me,'lastSaveTs')||0,saved:readMeta(me,'lastSaveCount')||0};
 }
-function getOrCreate(ss,name){let s=ss.getSheetByName(name);if(!s)s=ss.insertSheet(name);return s;}
+function getOrCreate(ss,name){
+  let s=ss.getSheetByName(name);
+  if(!s) s=ss.insertSheet(name);
+  return s;
+}
 function readMeta(sh,k){
   const d=sh.getDataRange().getValues();
-  for(let i=0;i<d.length;i++)if(String(d[i][0])===k){try{return JSON.parse(String(d[i][1]));}catch(e){return d[i][1];}}
+  for(let i=0;i<d.length;i++)
+    if(String(d[i][0])===k){try{return JSON.parse(String(d[i][1]));}catch(e){return d[i][1];}}
   return null;
 }
 function writeMeta(sh,k,v){
-  const d=sh.getDataRange().getValues(),j=JSON.stringify(v);
-  for(let i=0;i<d.length;i++){if(String(d[i][0])===k){sh.getRange(i+1,2).setValue(j);return;}}
+  const d=sh.getDataRange().getValues(), j=JSON.stringify(v);
+  for(let i=0;i<d.length;i++)
+    if(String(d[i][0])===k){sh.getRange(i+1,2).setValue(j);return;}
   sh.appendRow([k,j]);
 }`;
 

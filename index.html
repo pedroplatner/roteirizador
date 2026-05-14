@@ -79,6 +79,12 @@
                 if (typeof clientsInjectFromToken === 'function') {
                   try { clientsInjectFromToken(d.databases); } catch(e) { console.warn('Falha ao aplicar bancos do token:', e); }
                 }
+                // Configurar sheetsUrl e sheetId automaticamente do primeiro banco
+                var db0 = d.databases[0];
+                if (db0) {
+                  if (db0.gasUrl) { try { window.sheetsUrl = db0.gasUrl; localStorage.setItem('rotas_sheets_url_v1', db0.gasUrl); } catch(e){} }
+                  if (db0.sheetId) { try { window.sheetId = db0.sheetId; localStorage.setItem('rotas_sheet_id_v1', db0.sheetId); } catch(e){} }
+                }
               }
               document.getElementById('_guard_ov').remove();
               document.body.style.overflow = '';

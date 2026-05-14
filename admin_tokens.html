@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Tokens de Acesso</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#f0f2f5;min-height:100vh}
+
+/* Login */
+#login-screen{position:fixed;inset:0;background:#0f172a;display:none;align-items:center;justify-content:center;z-index:999}
+.login-box{background:#1e293b;border-radius:16px;padding:40px;width:340px;text-align:center}
+.login-box h2{color:#f1f5f9;font-size:20px;margin-bottom:6px}
+.login-box p{color:#94a3b8;font-size:12px;margin-bottom:24px}
+.login-box input{width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;margin-bottom:10px;text-align:center;font-family:monospace}
+.login-box button{width:100%;padding:11px;border-radius:8px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer}
+.login-box .err{color:#ef4444;font-size:11px;margin-top:8px;min-height:16px}
+
+/* Header */
+header{background:#1a2e4a;color:#fff;padding:14px 24px;display:flex;align-items:center;gap:12px}
+header h1{font-size:16px;font-weight:700;flex:1}
+header span.info{font-size:12px;color:#93c5fd}
+
+/* Tabs */
+.tabs{background:#fff;border-bottom:2px solid #e5e7eb;display:flex;padding:0 24px}
+.tab-btn{padding:12px 20px;font-size:13px;font-weight:700;color:#6b7280;border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .15s}
+.tab-btn:hover{color:#1a2e4a}
+.tab-btn.active{color:#2563eb;border-bottom-color:#2563eb}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Container */
+.container{max-width:960px;margin:24px auto;padding:0 16px}
+.card{background:#fff;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.card h3{font-size:14px;font-weight:700;color:#1a2e4a;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid #f0f0f0}
+
+/* Fields */
+.field label{display:block;font-size:11px;font-weight:700;color:#374151;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.field input,.field select{width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:13px;height:36px}
+.field .hint{font-size:10px;color:#9ca3af;margin-top:3px}
+
+/* Buttons */
+.btn{height:36px;padding:0 18px;border-radius:6px;font-size:13px;font-weight:700;border:none;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:#2563eb;color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-danger{background:#dc2626;color:#fff}
+.btn-danger:hover{background:#b91c1c}
+.btn-success{background:#16a34a;color:#fff}
+.btn-success:hover{background:#15803d}
+.btn-warning{background:#d97706;color:#fff}
+.btn-outline{background:#fff;border:1px solid #d1d5db;color:#374151}
+.btn-outline:hover{background:#f9fafb}
+.btn-sm{height:28px;padding:0 12px;font-size:11px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.stat{background:#fff;border-radius:10px;padding:16px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.stat-n{font-size:28px;font-weight:800;color:#1a2e4a}
+.stat-l{font-size:11px;color:#6b7280;margin-top:2px}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:#f8f9fa;padding:8px 10px;text-align:left;font-weight:700;color:#374151;border-bottom:2px solid #e5e7eb;white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid #f0f0f0;color:#374151;vertical-align:middle}
+tr:hover td{background:#fafafa}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:10px;font-weight:700}
+.badge-ativo{background:#d4edda;color:#155724}
+.badge-expirado{background:#fff3cd;color:#856404}
+.badge-revogado{background:#f8d7da;color:#721c24}
+.token-mono{font-family:monospace;font-size:11px;letter-spacing:1px;color:#1a2e4a;cursor:pointer}
+.token-mono:hover{color:#2563eb;text-decoration:underline}
+
+/* Status dots */
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dot-ok{background:#16a34a}
+.dot-err{background:#dc2626}
+.dot-warn{background:#d97706}
+.dot-idle{background:#d1d5db}
+
+/* Result boxes */
+.rbox{border-radius:8px;padding:11px 14px;font-size:12px;margin-top:10px;line-height:1.5}
+.rbox-ok{background:#f0fdf4;border:1px solid #86efac;color:#065f46}
+.rbox-err{background:#fef2f2;border:1px solid #fca5a5;color:#991b1b}
+.rbox-info{background:#eff6ff;border:1px solid #93c5fd;color:#1e40af}
+
+/* URL mono box */
+.mono-box{font-family:monospace;font-size:11px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px;color:#475569;word-break:break-all}
+
+/* Config rows */
+.cfg-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f3f4f6}
+.cfg-row:last-child{border-bottom:none}
+.cfg-label{font-size:12px;font-weight:700;color:#374151;min-width:160px}
+
+/* Token gerado */
+#token-gerado{display:none;margin-top:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px 18px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:#1a2e4a;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.empty{text-align:center;color:#9ca3af;padding:32px;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div style="font-size:40px;margin-bottom:12px">🔐</div>
+    <h2>Painel Admin</h2>
+    <p>Gestão de tokens de acesso<br>Rotas Caterpillar</p>
+    <input id="admin-key" type="password" placeholder="Chave de administrador" value="CATADMIN2025">
+    <button onclick="fazerLogin()">Entrar</button>
+    <div class="err" id="login-err"></div>
+  </div>
+</div>
+
+<header>
+  <span style="font-size:22px">🔑</span>
+  <h1>Painel Admin — Tokens de Acesso</h1>
+  <span class="info">Rotas Caterpillar</span>
+</header>
+
+<!-- ABAS -->
+<div class="tabs">
+  <button class="tab-btn active" id="tab-btn-tokens"    onclick="showTab('tokens')">🎫 Tokens</button>
+  <button class="tab-btn"        id="tab-btn-validacao" onclick="showTab('validacao')">🔍 Validação</button>
+  <button class="tab-btn"        id="tab-btn-conexoes"  onclick="showTab('conexoes')">⚙️ Conexões</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ABA: TOKENS
+     ═══════════════════════════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-tokens">
+<div class="container">
+
+  <div class="stats">
+    <div class="stat"><div class="stat-n" id="stat-total">—</div><div class="stat-l">Total de tokens</div></div>
+    <div class="stat"><div class="stat-n" id="stat-ativos" style="color:#16a34a">—</div><div class="stat-l">Ativos</div></div>
+    <div class="stat"><div class="stat-n" id="stat-expirados" style="color:#dc2626">—</div><div class="stat-l">Expirados / Revogados</div></div>
+  </div>
+
+  <div class="card">
+    <h3>✨ Gerar novo token</h3>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div class="field">
+        <label>Nome do cliente</label>
+        <input id="f-cliente" placeholder="Ex: Caterpillar – Produção">
+      </div>
+      <div class="field">
+        <label>Validade substituída abaixo ↓</label>
+        <input id="f-gasurl" placeholder="https://script.google.com/macros/s/..." style="font-family:monospace;font-size:11px">
+        <div class="hint">URL GAS do servidor de dados (deixe vazio para usar o central)</div>
+      </div>
+    </div>
+
+    <!-- Bancos de dados liberados -->
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.3px">Bancos de dados liberados</label>
+        <button class="btn btn-outline btn-sm" onclick="dbAddRow()" type="button">+ Adicionar banco</button>
+      </div>
+      <div id="f-databases" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div class="hint" style="margin-top:4px">Cada banco = uma planilha Google Sheets. O cliente poderá alternar entre eles no sistema.</div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-end">
+      <div class="field" style="flex:0 0 180px">
+        <label>Validade</label>
+        <select id="f-dias">
+          <option value="7">7 dias</option>
+          <option value="15">15 dias</option>
+          <option value="30" selected>30 dias</option>
+          <option value="60">60 dias</option>
+          <option value="90">90 dias</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="gerarToken()">⚡ Gerar token</button>
+      <button class="btn btn-outline" onclick="carregarTokens()">🔄 Atualizar lista</button>
+    </div>
+
+    <!-- Resultado -->
+    <div id="token-gerado">
+      <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:12px">✅ Token gerado com sucesso!</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
+        <div>
+          <div style="font-size:10px;color:#6b7280;font-weight:700;text-transform:uppercase;margin-bottom:5px">Token de acesso</div>
+          <div id="token-value" style="font-family:monospace;font-size:20px;font-weight:800;color:#065f46;letter-spacing:2px"></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#6b7280;font-weight:700;text-transform:uppercase;margin-bottom:5px">Código completo (token + URLs)</div>
+          <div id="token-payload-display" style="font-family:monospace;font-size:10px;color:#1e40af;word-break:break-all;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:7px 9px;max-height:54px;overflow:hidden"></div>
+        </div>
+      </div>
+
+      <div id="token-expira" style="font-size:11px;color:#6b7280;margin-bottom:12px"></div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-success  btn-sm" onclick="copiarToken()">📋 Copiar token</button>
+        <button class="btn btn-primary  btn-sm" onclick="copiarPayload()">📦 Copiar código completo</button>
+        <button class="btn btn-warning  btn-sm" onclick="copiarWhatsapp()">📱 Mensagem WhatsApp</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>📋 Tokens cadastrados</h3>
+    <div id="tokens-table"><div class="empty">Carregando...</div></div>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ABA: VALIDAÇÃO
+     ═══════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-validacao">
+<div class="container">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+    <!-- Conexão GAS -->
+    <div class="card">
+      <h3>🌐 Conexão com o servidor</h3>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:14px">Testa se o Google Apps Script está acessível.</p>
+
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <span class="dot dot-idle" id="ping-dot"></span>
+        <span id="ping-status" style="font-size:13px;color:#6b7280">Não testado</span>
+      </div>
+      <div class="mono-box" id="ping-url-display" style="margin-bottom:12px;font-size:10px">—</div>
+      <button class="btn btn-primary" style="width:100%" onclick="testarConexao()">🔌 Testar conexão</button>
+      <div id="ping-result"></div>
+    </div>
+
+    <!-- Validar token -->
+    <div class="card">
+      <h3>🔍 Validar token manualmente</h3>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:14px">Verifica se um token está ativo e exibe os detalhes.</p>
+
+      <div class="field" style="margin-bottom:12px">
+        <label>Token</label>
+        <input id="v-token" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX" style="font-family:monospace;text-transform:uppercase">
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="validarTokenManual()">✅ Validar</button>
+      <div id="validar-result"></div>
+    </div>
+
+  </div>
+
+  <!-- Status geral -->
+  <div class="card">
+    <h3>📊 Status do sistema</h3>
+
+    <div class="cfg-row">
+      <span class="dot dot-idle" id="ss-gas-dot"></span>
+      <div style="flex:1">
+        <div class="cfg-label">Google Apps Script</div>
+        <div class="mono-box" id="ss-gas-url" style="margin-top:4px;font-size:10px">—</div>
+      </div>
+    </div>
+    <div class="cfg-row">
+      <span class="dot dot-idle" id="ss-db-dot"></span>
+      <div style="flex:1">
+        <div class="cfg-label">Banco de dados (URL)</div>
+        <div class="mono-box" id="ss-db-url" style="margin-top:4px;font-size:10px">—</div>
+      </div>
+    </div>
+    <div class="cfg-row">
+      <span class="dot dot-ok" id="ss-auth-dot"></span>
+      <div style="flex:1">
+        <div class="cfg-label">Autenticação admin</div>
+        <div style="font-size:11px;color:#6b7280;margin-top:2px" id="ss-auth-info">Chave carregada</div>
+      </div>
+    </div>
+
+    <button class="btn btn-outline btn-sm" onclick="verificarSistema()" style="margin-top:14px">🔄 Verificar tudo</button>
+  </div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ABA: CONEXÕES
+     ═══════════════════════════════════════════════════════════ -->
+<div class="tab-panel" id="tab-conexoes">
+<div class="container">
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+
+    <!-- URLs configuráveis -->
+    <div class="card">
+      <h3>🔗 URLs do sistema</h3>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:16px">Salvo localmente neste navegador. Usado em todas as operações e embutido no código completo gerado.</p>
+
+      <div class="field" style="margin-bottom:16px">
+        <label>URL do Google Apps Script (GAS)</label>
+        <input id="cfg-gas-url" placeholder="https://script.google.com/macros/s/..." style="font-family:monospace;font-size:11px">
+        <div class="hint">Usada em todas as chamadas ao servidor. Atualize após redeployar o GAS.</div>
+      </div>
+
+      <div class="field" style="margin-bottom:20px">
+        <label>URL do banco de dados <span style="font-weight:400;color:#9ca3af">(opcional)</span></label>
+        <input id="cfg-db-url" placeholder="https://meubackend.com/api  ou  supabase URL..." style="font-family:monospace;font-size:11px">
+        <div class="hint">Incluída no código completo enviado ao cliente. Deixe vazio se não usar.</div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%" onclick="salvarConexoes()">💾 Salvar configurações</button>
+      <div id="cfg-result"></div>
+    </div>
+
+    <!-- Código completo: explicação + decodificador -->
+    <div class="card">
+      <h3>📦 Código completo</h3>
+      <p style="font-size:12px;color:#6b7280;margin-bottom:12px">
+        Ao clicar em <b>Copiar código completo</b>, o cliente recebe uma string única que contém
+        tudo que o sistema precisa para se configurar automaticamente.
+      </p>
+
+      <div style="background:#f8fafc;border-radius:8px;padding:12px;font-size:11px;color:#475569;margin-bottom:14px">
+        <div style="font-weight:700;margin-bottom:6px;color:#1a2e4a">Conteúdo embutido:</div>
+        <div>🎫 <b>token</b> — código de acesso</div>
+        <div>📊 <b>sheetId</b> — ID da planilha do cliente</div>
+        <div>🌐 <b>gas</b> — URL do Apps Script</div>
+        <div>🗄️ <b>db</b> — URL do banco de dados (se configurado)</div>
+      </div>
+
+      <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:6px">Preview do payload atual:</div>
+      <pre id="payload-preview" class="mono-box" style="font-size:10px;white-space:pre-wrap;max-height:90px;overflow:auto">{}</pre>
+
+      <div style="margin-top:16px;border-top:1px solid #f0f0f0;padding-top:14px">
+        <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px">🔓 Decodificar um código completo:</div>
+        <div class="field" style="margin-bottom:8px">
+          <input id="decode-input" placeholder="Cole o código completo aqui..." style="font-family:monospace;font-size:10px">
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="decodificarPayload()">Decodificar</button>
+        <div id="decode-result"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</div>
+
+<!-- Modal gerenciar bancos -->
+<div id="modal-bancos" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:28px;width:560px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.2)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <h3 style="font-size:15px;font-weight:700;color:#1a2e4a">🗄️ Bancos de dados do token</h3>
+      <button onclick="closeBancosModal()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#6b7280">✕</button>
+    </div>
+    <div id="modal-bancos-cliente" style="font-size:11px;color:#6b7280;margin-bottom:16px"></div>
+
+    <div id="modal-bancos-lista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+
+    <div style="border-top:1px solid #f0f0f0;padding-top:14px">
+      <div style="font-size:11px;font-weight:700;color:#374151;margin-bottom:8px;text-transform:uppercase">Adicionar banco</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center">
+        <input id="mb-nome" placeholder="Nome (ex: Caterpillar)" style="padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:12px">
+        <input id="mb-sheetid" placeholder="Sheet ID ou URL..." style="padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:12px;font-family:monospace">
+        <button class="btn btn-success btn-sm" onclick="mbAdicionarBanco()">+ Adicionar</button>
+      </div>
+      <div id="mb-err" style="font-size:11px;color:#dc2626;margin-top:6px;min-height:14px"></div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeBancosModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="mbSalvar()">💾 Salvar alterações</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Constantes ────────────────────────────────────────────────
+const DEFAULT_GAS      = 'https://script.google.com/macros/s/AKfycbwdBGtYKmiZo_XFZM98CH6KtTy83AW78uCQa_s5RCKbkvASvH8eiG75StiEFRALHvc0Dg/exec';
+const KEY_ADMIN        = '_admin_key';
+const KEY_GAS_URL      = '_gas_url';
+const KEY_DB_URL       = '_db_url';
+const ADMIN_FIXED_KEY  = 'CATADMIN2025';
+
+let ADMIN_KEY     = ADMIN_FIXED_KEY;
+let ultimoToken   = '';
+let ultimoPayload = '';
+let TOKENS_CACHE  = [];
+
+function getGasUrl() { return DEFAULT_GAS; }
+function getDbUrl()  { return localStorage.getItem(KEY_DB_URL) || ''; }
+function dbsArray(value) {
+  if (Array.isArray(value)) return value;
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch(e) {
+    return [];
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.getElementById('tab-btn-' + name).classList.add('active');
+  if (name === 'validacao') atualizarStatusDisplay();
+  if (name === 'conexoes')  preencherConexoes();
+}
+
+// ── JSONP ─────────────────────────────────────────────────────
+function jsonpCall(params, timeoutMs) {
+  return new Promise(function(resolve, reject) {
+    const cbName = '_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    const qs = Object.entries(params).concat([['callback', cbName]])
+      .map(function(kv) { return kv[0] + '=' + encodeURIComponent(kv[1]); }).join('&');
+    const script = document.createElement('script');
+    const timer = setTimeout(function() {
+      delete window[cbName]; script.remove();
+      reject(new Error('Timeout (servidor não respondeu)'));
+    }, timeoutMs || 15000);
+    window[cbName] = function(data) {
+      clearTimeout(timer); delete window[cbName]; script.remove();
+      resolve(data);
+    };
+    script.onerror = function() {
+      clearTimeout(timer); delete window[cbName]; script.remove();
+      reject(new Error('Erro de conexão'));
+    };
+    script.src = getGasUrl() + '?' + qs;
+    document.head.appendChild(script);
+  });
+}
+
+// ── LOGIN ─────────────────────────────────────────────────────
+function fazerLogin() {
+  const key = (document.getElementById('admin-key').value.trim() || ADMIN_FIXED_KEY);
+  document.getElementById('login-err').textContent = 'Verificando...';
+  jsonpCall({ action: 'adminTokens', adminKey: key, acao: 'listar' })
+    .then(function(d) {
+      if (d.ok) {
+        ADMIN_KEY = key;
+        localStorage.setItem(KEY_ADMIN, key);
+        document.getElementById('login-screen').style.display = 'none';
+        renderTokens(d.tokens || []);
+        atualizarStats(d.tokens || []);
+      } else {
+        document.getElementById('login-err').textContent = d.msg || 'Chave inválida.';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('login-err').textContent = 'Erro: ' + err.message;
+    });
+}
+document.getElementById('admin-key').onkeydown = function(e) { if (e.key === 'Enter') fazerLogin(); };
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('login-screen').style.display = 'none';
+  ADMIN_KEY = ADMIN_FIXED_KEY;
+  document.getElementById('admin-key').value = ADMIN_FIXED_KEY;
+  carregarTokens();
+});
+
+// ── GERAR TOKEN ───────────────────────────────────────────────
+function gerarToken() {
+  const cliente = document.getElementById('f-cliente').value.trim();
+  const dias    = document.getElementById('f-dias').value;
+  if (!cliente) { showToast('⚠️ Informe o nome do cliente'); return; }
+
+  const gasUrl    = document.getElementById('f-gasurl').value.trim();
+  const databases = dbGetRows();
+  if (!databases.length) { showToast('⚠️ Adicione ao menos um banco de dados'); return; }
+  const sheetId = databases[0].sheetId || '';
+  jsonpCall({ action: 'adminTokens', adminKey: ADMIN_KEY, acao: 'criar',
+              cliente: cliente, dias: dias, sheetId: sheetId, gasUrl: gasUrl })
+    .then(function(d) {
+      if (!d.token) { throw new Error(d.msg || 'Erro ao criar token'); }
+
+      return cadastrarDatabases(d.token, databases, gasUrl).then(function() { return d; });
+    })
+    .then(function(d) {
+      ultimoToken = d.token;
+      const payloadObj = { token: d.token };
+      ultimoPayload = btoa(JSON.stringify(payloadObj));
+
+      document.getElementById('token-value').textContent = d.token;
+      document.getElementById('token-payload-display').textContent = d.token;
+      document.getElementById('token-expira').textContent =
+        'Válido até ' + (d.expira || '?') + ' (' + dias + ' dias)'
+        + ' · Cliente: ' + cliente
+        + ' · Bancos: ' + databases.length;
+      document.getElementById('token-gerado').style.display = 'block';
+
+      document.getElementById('f-cliente').value = '';
+      document.getElementById('f-gasurl').value  = '';
+      dbClearRows();
+      carregarTokens();
+      showToast('✅ Token gerado!');
+    })
+    .catch(function(err) { showToast('❌ ' + err.message); });
+}
+
+function cadastrarDatabases(token, databases, gasUrl) {
+  return Promise.all(databases.map(function(db) {
+    return jsonpCall({
+      action: 'adminTokens',
+      adminKey: ADMIN_KEY,
+      acao: 'criarDatabase',
+      token: token,
+      nome: db.name,
+      icon: db.icon || '🏭',
+      sheetId: db.sheetId,
+      gasUrl: gasUrl || getGasUrl(),
+      destLat: db.destLat || '',
+      destLon: db.destLon || '',
+      destLabel: db.destLabel || '',
+      destAddress: db.destAddress || ''
+    });
+  }));
+}
+
+function copiarToken() {
+  navigator.clipboard.writeText(ultimoToken).then(function() { showToast('📋 Token copiado!'); });
+}
+function copiarPayload() {
+  navigator.clipboard.writeText(ultimoPayload).then(function() { showToast('📦 Código completo copiado!'); });
+}
+function copiarWhatsapp() {
+  const info = document.getElementById('token-expira').textContent;
+  const msg = '🔑 *Acesso — Rotas Caterpillar*\n\n'
+    + '*Token simples:*\n`' + ultimoToken + '`\n\n'
+    + '*Código completo (configuração automática):*\n`' + ultimoPayload + '`\n\n'
+    + info + '\n\n_Cole o código completo na tela de acesso do sistema para configuração automática._';
+  navigator.clipboard.writeText(msg).then(function() { showToast('📱 Mensagem copiada! Cole no WhatsApp.'); });
+}
+
+// ── BANCOS DE DADOS (formulário dinâmico) ─────────────────────
+let _dbCount = 0;
+function dbAddRow(name, sheetId) {
+  _dbCount++;
+  const id = 'db_' + _dbCount;
+  const row = document.createElement('div');
+  row.id = id;
+  row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px';
+  row.innerHTML =
+    '<input placeholder="Nome (ex: Caterpillar)" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:5px;font-size:12px">'
+    + '<input placeholder="Sheet ID ou URL..." style="padding:6px 8px;border:1px solid #d1d5db;border-radius:5px;font-size:12px;font-family:monospace">'
+    + '<button type="button" onclick="document.getElementById(\'' + id + '\').remove()" style="width:28px;height:28px;border:none;background:#fee2e2;color:#dc2626;border-radius:5px;cursor:pointer;font-size:14px">✕</button>';
+  if (name)    row.querySelectorAll('input')[0].value = name;
+  if (sheetId) row.querySelectorAll('input')[1].value = sheetId;
+  document.getElementById('f-databases').appendChild(row);
+}
+function dbGetRows() {
+  const dbs = [];
+  document.getElementById('f-databases').querySelectorAll('div').forEach(function(row) {
+    const inputs = row.querySelectorAll('input');
+    const name = inputs[0]?.value.trim();
+    let sid = inputs[1]?.value.trim();
+    if (!name || !sid) return;
+    const m = sid.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (m) sid = m[1];
+    dbs.push({ name: name, sheetId: sid });
+  });
+  return dbs;
+}
+function dbClearRows() {
+  document.getElementById('f-databases').innerHTML = '';
+  _dbCount = 0;
+}
+
+// ── LISTAR / STATS ────────────────────────────────────────────
+function carregarTokens() {
+  document.getElementById('tokens-table').innerHTML = '<div class="empty">Carregando tokens...</div>';
+  jsonpCall({ action: 'adminTokens', adminKey: ADMIN_KEY, acao: 'listar' })
+    .then(function(d) {
+      if (d.ok) {
+        renderTokens(d.tokens || []);
+        atualizarStats(d.tokens || []);
+      } else {
+        document.getElementById('tokens-table').innerHTML = '<div class="rbox rbox-err">Erro ao listar tokens: ' + (d.msg || 'resposta inválida') + '</div>';
+      }
+    })
+    .catch(function(err) {
+      document.getElementById('tokens-table').innerHTML = '<div class="rbox rbox-err">Erro ao carregar tokens: ' + err.message + '</div>';
+      showToast('❌ ' + err.message);
+    });
+}
+
+function atualizarStats(tokens) {
+  document.getElementById('stat-total').textContent     = tokens.length;
+  document.getElementById('stat-ativos').textContent    = tokens.filter(t => t.status === 'ATIVO').length;
+  document.getElementById('stat-expirados').textContent = tokens.filter(t => t.status !== 'ATIVO').length;
+}
+
+function renderTokens(tokens) {
+  const el = document.getElementById('tokens-table');
+  TOKENS_CACHE = tokens || [];
+  if (!tokens.length) { el.innerHTML = '<div class="empty">Nenhum token cadastrado ainda.</div>'; return; }
+  tokens.sort(function(a, b) {
+    if (a.status === 'ATIVO' && b.status !== 'ATIVO') return -1;
+    if (a.status !== 'ATIVO' && b.status === 'ATIVO') return  1;
+    return 0;
+  });
+  el.innerHTML = '<table><thead><tr>'
+    + '<th>Token</th><th>Cliente</th><th>Sheet ID</th><th>GAS cliente</th>'
+    + '<th>Criado em</th><th>Expira em</th><th>Status</th>'
+    + '<th>Último acesso</th><th>Acessos</th><th>Ações</th>'
+    + '</tr></thead><tbody>'
+    + tokens.map(function(t) {
+        const badge = { ATIVO: '<span class="badge badge-ativo">ATIVO</span>',
+                        EXPIRADO: '<span class="badge badge-expirado">EXPIRADO</span>' }[t.status]
+                      || '<span class="badge badge-revogado">REVOGADO</span>';
+        let dbs = dbsArray(t.databases);
+        const dbDisplay = dbs.length
+          ? '<span style="cursor:pointer" title="' + dbs.map(function(d){return d.name+': '+d.sheetId;}).join('\n') + '">'
+            + '<span class="badge" style="background:#dbeafe;color:#1d4ed8">' + dbs.length + ' banco' + (dbs.length>1?'s':'') + '</span>'
+            + ' ' + dbs.map(function(d){return d.name;}).join(', ')
+            + '</span>'
+          : '—';
+        const gasDisplay = t.gasUrl
+          ? '<span class="token-mono" title="' + t.gasUrl + '" onclick="copiarTexto(\'' + t.gasUrl + '\')">…' + t.gasUrl.slice(-20) + '</span>'
+          : '—';
+        const acoes =
+          '<button class="btn btn-outline btn-sm" onclick="openBancosModalByToken(\'' + t.token + '\')" style="margin-right:4px" title="Gerenciar bancos">🗄️ Bancos</button>'
+          + (t.status === 'ATIVO'
+            ? '<button class="btn btn-success btn-sm" onclick="renovarToken(\'' + t.token + '\')" style="margin-right:4px">+30d</button>'
+              + '<button class="btn btn-danger btn-sm" onclick="revogarToken(\'' + t.token + '\')">🚫</button>'
+            : '<button class="btn btn-outline btn-sm" onclick="renovarToken(\'' + t.token + '\')">↺ Renovar</button>');
+        return '<tr>'
+          + '<td><span class="token-mono" onclick="copiarTexto(\'' + t.token + '\')" title="Clique para copiar">' + t.token + '</span></td>'
+          + '<td>' + (t.cliente || '—') + '</td>'
+          + '<td>' + dbDisplay + '</td>'
+          + '<td>' + gasDisplay + '</td>'
+          + '<td>' + (t.criado || '—') + '</td>'
+          + '<td>' + (t.expira || '—') + '</td>'
+          + '<td>' + badge + '</td>'
+          + '<td>' + (t.ultimoAcesso || '—') + '</td>'
+          + '<td style="text-align:center">' + (t.acessos || 0) + '</td>'
+          + '<td style="white-space:nowrap">' + acoes + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
+// ── REVOGAR / RENOVAR ─────────────────────────────────────────
+function revogarToken(token) {
+  if (!confirm('Revogar o token ' + token + '?\nO cliente perderá o acesso imediatamente.')) return;
+  jsonpCall({ action: 'adminTokens', adminKey: ADMIN_KEY, acao: 'revogar', token: token })
+    .then(function(d) {
+      showToast(d.ok ? '✅ Token revogado!' : '❌ Erro ao revogar');
+      carregarTokens();
+    })
+    .catch(function(err) { showToast('❌ ' + err.message); });
+}
+
+function renovarToken(token) {
+  const dias = prompt('Quantos dias adicionar à validade?', '30');
+  if (!dias || isNaN(parseInt(dias))) return;
+  jsonpCall({ action: 'adminTokens', adminKey: ADMIN_KEY, acao: 'renovar', token: token, dias: parseInt(dias) })
+    .then(function(d) {
+      showToast(d.ok ? '✅ Renovado até ' + d.expira : '❌ ' + (d.msg || 'Erro'));
+      carregarTokens();
+    })
+    .catch(function(err) { showToast('❌ ' + err.message); });
+}
+
+// ── MODAL GERENCIAR BANCOS ────────────────────────────────────
+let _mbToken = '', _mbBancos = [], _mbOriginalBancos = [];
+
+function openBancosModalByToken(token) {
+  const item = TOKENS_CACHE.find(function(t) { return t.token === token; });
+  if (!item) { showToast('❌ Token não encontrado na lista'); return; }
+  openBancosModal(item.token, item.cliente || '', item.databases || []);
+}
+
+function openBancosModal(token, cliente, dbsJson) {
+  _mbToken = token;
+  _mbBancos = dbsArray(dbsJson);
+  _mbOriginalBancos = JSON.parse(JSON.stringify(_mbBancos));
+  document.getElementById('modal-bancos-cliente').textContent = 'Token: ' + token + ' · Cliente: ' + cliente;
+  document.getElementById('mb-nome').value = '';
+  document.getElementById('mb-sheetid').value = '';
+  document.getElementById('mb-err').textContent = '';
+  mbRenderLista();
+  document.getElementById('modal-bancos').style.display = 'flex';
+}
+function closeBancosModal() {
+  document.getElementById('modal-bancos').style.display = 'none';
+}
+function mbRenderLista() {
+  const el = document.getElementById('modal-bancos-lista');
+  if (!_mbBancos.length) {
+    el.innerHTML = '<div style="padding:12px;color:#9ca3af;text-align:center;font-size:12px;background:#f9fafb;border-radius:6px">Nenhum banco liberado ainda.</div>';
+    return;
+  }
+  el.innerHTML = _mbBancos.map(function(db, i) {
+    return '<div style="display:grid;grid-template-columns:1fr 1.4fr auto;gap:8px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 12px">'
+      + '<input value="' + escAttr(db.name || '') + '" oninput="mbEditar(' + i + ',&quot;name&quot;,this.value)" placeholder="Nome" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:5px;font-size:12px">'
+      + '<input value="' + escAttr(db.sheetId || '') + '" oninput="mbEditar(' + i + ',&quot;sheetId&quot;,this.value)" placeholder="Sheet ID ou URL" style="padding:6px 8px;border:1px solid #d1d5db;border-radius:5px;font-size:12px;font-family:monospace">'
+      + '<button onclick="mbRemover(' + i + ')" style="border:none;background:#fee2e2;color:#dc2626;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:11px;font-weight:700">Remover</button>'
+      + '</div>';
+  }).join('');
+}
+function escAttr(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function normalizarSheetId(sid) {
+  sid = String(sid || '').trim();
+  const m = sid.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : sid;
+}
+function mbEditar(idx, campo, valor) {
+  if (!_mbBancos[idx]) return;
+  _mbBancos[idx][campo] = campo === 'sheetId' ? normalizarSheetId(valor) : valor.trim();
+}
+function mbAdicionarBanco() {
+  const nome = document.getElementById('mb-nome').value.trim();
+  let   sid  = document.getElementById('mb-sheetid').value.trim();
+  const err  = document.getElementById('mb-err');
+  if (!nome) { err.textContent = 'Digite o nome do banco.'; return; }
+  if (!sid)  { err.textContent = 'Cole o Sheet ID ou URL.'; return; }
+  sid = normalizarSheetId(sid);
+  if (_mbBancos.find(function(d){ return d.sheetId === sid; })) { err.textContent = 'Este banco já está na lista.'; return; }
+  err.textContent = '';
+  _mbBancos.push({ name: nome, sheetId: sid });
+  document.getElementById('mb-nome').value = '';
+  document.getElementById('mb-sheetid').value = '';
+  mbRenderLista();
+}
+function mbRemover(idx) {
+  _mbBancos.splice(idx, 1);
+  mbRenderLista();
+}
+function mbSalvar() {
+  _mbBancos = _mbBancos.map(function(db) {
+    return { name: String(db.name || '').trim(), sheetId: normalizarSheetId(db.sheetId), icon: db.icon || '🏭',
+             gasUrl: db.gasUrl || getGasUrl(), destLat: db.destLat || '', destLon: db.destLon || '',
+             destLabel: db.destLabel || '', destAddress: db.destAddress || '' };
+  }).filter(function(db) { return db.name && db.sheetId; });
+
+  const vistos = new Set();
+  _mbBancos = _mbBancos.filter(function(db) {
+    if (vistos.has(db.sheetId)) return false;
+    vistos.add(db.sheetId);
+    return true;
+  });
+
+  if (!_mbBancos.length) {
+    if (!confirm('Salvar sem nenhum banco liberado para este token?')) return;
+  }
+
+  jsonpCall({ action: 'adminTokens', adminKey: ADMIN_KEY, acao: 'substituirDatabases',
+              token: _mbToken, databases: JSON.stringify(_mbBancos) })
+    .then(function(d) {
+      if (!d.ok) throw new Error(d.msg || 'Erro ao salvar bancos');
+      showToast('✅ Bancos atualizados!');
+      closeBancosModal();
+      carregarTokens();
+    })
+    .catch(function(err) { showToast('❌ ' + err.message); });
+}
+
+// ── ABA VALIDAÇÃO ─────────────────────────────────────────────
+function atualizarStatusDisplay() {
+  const gasUrl = getGasUrl();
+  const dbUrl  = getDbUrl();
+  document.getElementById('ping-url-display').textContent = gasUrl;
+  document.getElementById('ss-gas-url').textContent = gasUrl;
+  document.getElementById('ss-db-url').textContent  = dbUrl || '(não configurado)';
+  document.getElementById('ss-db-dot').className    = 'dot ' + (dbUrl ? 'dot-ok' : 'dot-idle');
+}
+
+function testarConexao() {
+  const dot    = document.getElementById('ping-dot');
+  const status = document.getElementById('ping-status');
+  const result = document.getElementById('ping-result');
+  dot.className = 'dot dot-warn';
+  status.textContent = 'Testando…';
+  result.innerHTML = '';
+  const t0 = Date.now();
+  jsonpCall({ action: 'ping', sheetId: 'test' }, 12000)
+    .then(function() {
+      const ms = Date.now() - t0;
+      dot.className = 'dot dot-ok';
+      status.textContent = 'Conectado (' + ms + 'ms)';
+      document.getElementById('ss-gas-dot').className = 'dot dot-ok';
+      result.innerHTML = '<div class="rbox rbox-ok">✅ GAS respondeu em ' + ms + 'ms</div>';
+    })
+    .catch(function(err) {
+      dot.className = 'dot dot-err';
+      status.textContent = 'Falha na conexão';
+      document.getElementById('ss-gas-dot').className = 'dot dot-err';
+      result.innerHTML = '<div class="rbox rbox-err">❌ ' + err.message + '</div>';
+    });
+}
+
+function validarTokenManual() {
+  const token  = document.getElementById('v-token').value.trim().toUpperCase();
+  const result = document.getElementById('validar-result');
+  if (!token) { result.innerHTML = '<div class="rbox rbox-err">Digite um token.</div>'; return; }
+  result.innerHTML = '<div class="rbox rbox-info">Validando…</div>';
+  jsonpCall({ action: 'validarToken', token: token })
+    .then(function(d) {
+      if (d.ok) {
+        result.innerHTML = '<div class="rbox rbox-ok">'
+          + '✅ <b>' + (d.msg || 'Válido') + '</b><br>'
+          + '<span style="font-size:11px">'
+          + 'Expira: ' + (d.expira || '—')
+          + ' · Acessos: ' + (d.acessos || 0)
+          + (d.sheetId ? ' · Sheet: ' + d.sheetId.substring(0, 14) + '…' : '')
+          + '</span></div>';
+      } else {
+        result.innerHTML = '<div class="rbox rbox-err">❌ ' + (d.msg || 'Inválido') + '</div>';
+      }
+    })
+    .catch(function(err) {
+      result.innerHTML = '<div class="rbox rbox-err">❌ ' + err.message + '</div>';
+    });
+}
+
+function verificarSistema() { testarConexao(); }
+
+// ── ABA CONEXÕES ──────────────────────────────────────────────
+function preencherConexoes() {
+  document.getElementById('cfg-gas-url').value = getGasUrl();
+  document.getElementById('cfg-db-url').value  = getDbUrl();
+  atualizarPreviewPayload();
+}
+
+function salvarConexoes() {
+  const gasUrl = document.getElementById('cfg-gas-url').value.trim();
+  const dbUrl  = document.getElementById('cfg-db-url').value.trim();
+  const el     = document.getElementById('cfg-result');
+  if (!gasUrl) { el.innerHTML = '<div class="rbox rbox-err">URL do GAS não pode ser vazia.</div>'; return; }
+  localStorage.setItem(KEY_GAS_URL, gasUrl);
+  localStorage.setItem(KEY_DB_URL,  dbUrl);
+  el.innerHTML = '<div class="rbox rbox-ok">✅ Configurações salvas!</div>';
+  setTimeout(function() { el.innerHTML = ''; }, 3000);
+  atualizarPreviewPayload();
+  showToast('✅ URLs salvas com sucesso!');
+}
+
+function atualizarPreviewPayload() {
+  const obj = { token: 'XXXXX-XXXXX-XXXXX-XXXXX-XXXXX', sheetId: '1BU43HOR…', gas: getGasUrl(), db: getDbUrl() };
+  const el  = document.getElementById('payload-preview');
+  if (el) el.textContent = JSON.stringify(obj, null, 2);
+}
+
+function decodificarPayload() {
+  const input  = document.getElementById('decode-input').value.trim();
+  const result = document.getElementById('decode-result');
+  if (!input) return;
+  try {
+    const obj = JSON.parse(atob(input));
+    result.innerHTML = '<div class="rbox rbox-ok"><pre style="font-size:10px;white-space:pre-wrap">' + JSON.stringify(obj, null, 2) + '</pre></div>';
+  } catch(e) {
+    result.innerHTML = '<div class="rbox rbox-err">❌ Código inválido ou corrompido.</div>';
+  }
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function copiarTexto(txt) {
+  navigator.clipboard.writeText(txt).then(function() { showToast('📋 Copiado!'); });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function() { t.classList.remove('show'); }, 3000);
+}
+</script>
+</body>
+</html>

@@ -697,8 +697,8 @@ function renderTokens(tokens) {
         const expiraFmt = (t.expira||'').toString().replace('T',' ').slice(0,10).replace(/-/g,'/');
         const acessoFmt = (t.ultimoAcesso||'').toString().replace('T',' ').slice(0,16).replace(/-/g,'/');
         return '<tr>'
-          + '<td><span class="token-mono" onclick="copiarTexto(\'' + t.token + '\')" title="' + t.token + '">'+t.token.slice(0,14)+'…</span></td>'
-          + '<td title="' + esc(t.cliente||'') + '">' + esc(t.cliente || '—') + '</td>'
+          + '<td><span class="token-mono" onclick="copiarTexto(\'' + escAttr(t.token) + '\')" title="' + escAttr(t.token) + '">'+escAttr(t.token.slice(0,14))+'…</span></td>'
+          + '<td title="' + escAttr(t.cliente||'') + '">' + escAttr(t.cliente || '—') + '</td>'
           + '<td>' + dbDisplay + '</td>'
           + '<td title="' + criadoFmt + '">' + criadoFmt + '</td>'
           + '<td title="' + expiraFmt + '">' + expiraFmt + '</td>'

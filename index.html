@@ -156,6 +156,14 @@
   }
 
   document.addEventListener('DOMContentLoaded', check);
+
+  window.sairDoSistema = function() {
+    if (!confirm('Sair e trocar token? Os dados não salvos serão perdidos.')) return;
+    ['__rcat_tok','__rcat_cfg','rotas_cat_v9','rotas_sheets_url_v1','rotas_sheet_id_v1',
+     'rotas_van_cfg_v1','rotas_sheet_times_v1','rotas_sheet_cfg_v1',
+     'rotas_stops_real_routes_v1'].forEach(function(k){ localStorage.removeItem(k); });
+    location.reload();
+  };
 })();
 
 window.openClientsModalSafe = function(){
@@ -880,6 +888,7 @@ function _gerRenameCustom(type,oldVal,newVal){
   <span id="lib-count" style="font-size:10px;opacity:.6"></span>
   <span id="sheets-status-hdr" class="sync-status" style="font-size:10px;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,.1)">☁️ Google Sheets: não conectado</span>
   <span style="font-size:10px;opacity:.4;margin-left:auto">v12</span>
+  <button onclick="sairDoSistema()" title="Trocar token / sair" style="font-size:10px;padding:2px 10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);border-radius:4px;cursor:pointer;white-space:nowrap">🚪 Sair</button>
 </div>
 
 <div id="toolbar">

@@ -390,6 +390,7 @@ tr:hover td{background:#fafafa}
 <script>
 // ── Constantes ────────────────────────────────────────────────
 const DEFAULT_GAS      = 'https://script.google.com/macros/s/AKfycbwdBGtYKmiZo_XFZM98CH6KtTy83AW78uCQa_s5RCKbkvASvH8eiG75StiEFRALHvc0Dg/exec';
+const PROXY_URL        = 'https://awkwardlookingfrilledshark-n8n.cloudfy.live/webhook/gas-proxy';
 const KEY_ADMIN        = '_admin_key';
 const KEY_GAS_URL      = '_gas_url';
 const KEY_DB_URL       = '_db_url';
@@ -427,25 +428,18 @@ function showTab(name) {
 
 // ── JSONP ─────────────────────────────────────────────────────
 function jsonpCall(params, timeoutMs) {
-  return new Promise(function(resolve, reject) {
-    const cbName = '_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-    const qs = Object.entries(params).concat([['callback', cbName]])
-      .map(function(kv) { return kv[0] + '=' + encodeURIComponent(kv[1]); }).join('&');
-    const script = document.createElement('script');
-    const timer = setTimeout(function() {
-      delete window[cbName]; script.remove();
-      reject(new Error('Timeout (servidor não respondeu)'));
-    }, timeoutMs || 15000);
-    window[cbName] = function(data) {
-      clearTimeout(timer); delete window[cbName]; script.remove();
-      resolve(data);
-    };
-    script.onerror = function() {
-      clearTimeout(timer); delete window[cbName]; script.remove();
-      reject(new Error('Erro de conexão'));
-    };
-    script.src = getGasUrl() + '?' + qs;
-    document.head.appendChild(script);
+  return fetch(PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    signal: AbortSignal.timeout(timeoutMs || 15000)
+  })
+  .then(function(r) {
+    if (!r.ok) throw new Error('Erro de conexão (' + r.status + ')');
+    return r.json();
+  })
+  .catch(function(e) {
+    throw new Error(e.name === 'TimeoutError' ? 'Timeout (servidor não respondeu)' : 'Erro de conexão');
   });
 }
 

@@ -7,7 +7,7 @@
 <script>
 (function(){
   // ── Sistema de licença via GAS (Token Manager) ──
-  const GAS_VALID = 'https://script.google.com/macros/s/AKfycbwdBGtYKmiZo_XFZM98CH6KtTy83AW78uCQa_s5RCKbkvASvH8eiG75StiEFRALHvc0Dg/exec';
+  const PROXY_URL = 'https://awkwardlookingfrilledshark-n8n.cloudfy.live/webhook/gas-proxy';
   const TOK_KEY   = '__rcat_tok';
   const CFG_KEY   = '__rcat_cfg';
 
@@ -98,17 +98,14 @@
   }
 
   function validateToken(tok) {
-    return new Promise(function(resolve, reject) {
-      var cb = '_rtok_' + Date.now() + '_' + Math.random().toString(36).slice(2);
-      var s  = document.createElement('script');
-      var tm = setTimeout(function() {
-        delete window[cb]; s.remove();
-        reject(new Error('Timeout'));
-      }, 15000);
-      window[cb] = function(d) { clearTimeout(tm); delete window[cb]; s.remove(); resolve(d); };
-      s.onerror  = function()  { clearTimeout(tm); delete window[cb]; s.remove(); reject(new Error('Sem conexão')); };
-      s.src = GAS_VALID + '?action=validarToken&token=' + encodeURIComponent(tok) + '&callback=' + cb;
-      document.head.appendChild(s);
+    return fetch(PROXY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'validarToken', token: tok })
+    })
+    .then(function(r) {
+      if (!r.ok) throw new Error('Sem conexão');
+      return r.json();
     });
   }
 

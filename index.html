@@ -62,6 +62,12 @@
         validateToken(tok)
           .then(function(d) {
             if (d.ok) {
+              var prevTok = localStorage.getItem(TOK_KEY);
+              if (prevTok && prevTok !== tok) {
+                ['rotas_cat_v9','rotas_sheets_url_v1','rotas_sheet_id_v1',
+                 'rotas_van_cfg_v1','rotas_sheet_times_v1','rotas_sheet_cfg_v1',
+                 'rotas_stops_real_routes_v1'].forEach(function(k){ localStorage.removeItem(k); });
+              }
               localStorage.setItem(TOK_KEY, tok);
               localStorage.setItem(CFG_KEY, JSON.stringify({
                 databases: d.databases || [], gasUrl: d.gasUrl || '',

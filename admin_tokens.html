@@ -113,7 +113,7 @@ tr:hover td{background:#fafafa}
     <div style="font-size:40px;margin-bottom:12px">🔐</div>
     <h2>Painel Admin</h2>
     <p>Gestão de tokens de acesso<br>Rotas Caterpillar</p>
-    <input id="admin-key" type="password" placeholder="Chave de administrador" value="CATADMIN2025">
+    <input id="admin-key" type="password" placeholder="Chave de administrador" autocomplete="off">
     <button onclick="fazerLogin()">Entrar</button>
     <div class="err" id="login-err"></div>
   </div>
@@ -122,7 +122,8 @@ tr:hover td{background:#fafafa}
 <header>
   <span style="font-size:22px">🔑</span>
   <h1>Painel Admin — Tokens de Acesso</h1>
-  <span class="info">Rotas Caterpillar</span>
+  <span class="info">Via Gestão</span>
+  <button onclick="logoutAdmin()" title="Sair do admin" style="margin-left:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:11px">🚪 Sair</button>
 </header>
 
 <!-- ABAS -->
@@ -397,9 +398,8 @@ const KEY_ADMIN        = '_admin_key';
 const KEY_GAS_URL      = '_gas_url';
 const KEY_DB_URL       = '_db_url';
 const KEY_N8N_URL      = '_n8n_url';
-const ADMIN_FIXED_KEY  = 'CATADMIN2025';
 
-let ADMIN_KEY     = ADMIN_FIXED_KEY;
+let ADMIN_KEY     = localStorage.getItem(KEY_ADMIN) || '';
 let ultimoToken   = '';
 let ultimoPayload = '';
 let TOKENS_CACHE  = [];
@@ -447,7 +447,8 @@ function jsonpCall(params, timeoutMs) {
 
 // ── LOGIN ─────────────────────────────────────────────────────
 function fazerLogin() {
-  const key = (document.getElementById('admin-key').value.trim() || ADMIN_FIXED_KEY);
+  const key = document.getElementById('admin-key').value.trim();
+  if (!key) { document.getElementById('login-err').textContent = 'Informe a chave.'; return; }
   document.getElementById('login-err').textContent = 'Verificando...';
   jsonpCall({ action: 'adminTokens', adminKey: key, acao: 'listar' })
     .then(function(d) {
@@ -457,6 +458,7 @@ function fazerLogin() {
         document.getElementById('login-screen').style.display = 'none';
         renderTokens(d.tokens || []);
         atualizarStats(d.tokens || []);
+        atualizarStatusN8n();
       } else {
         document.getElementById('login-err').textContent = d.msg || 'Chave inválida.';
       }
@@ -465,13 +467,39 @@ function fazerLogin() {
       document.getElementById('login-err').textContent = 'Erro: ' + err.message;
     });
 }
+function logoutAdmin() {
+  localStorage.removeItem(KEY_ADMIN);
+  ADMIN_KEY = '';
+  location.reload();
+}
 document.getElementById('admin-key').onkeydown = function(e) { if (e.key === 'Enter') fazerLogin(); };
 document.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('login-screen').style.display = 'none';
-  ADMIN_KEY = ADMIN_FIXED_KEY;
-  document.getElementById('admin-key').value = ADMIN_FIXED_KEY;
-  atualizarStatusN8n();
-  carregarTokens();
+  if (ADMIN_KEY) {
+    // Chave já salva no localStorage — tenta auto-login silencioso
+    jsonpCall({ action: 'adminTokens', adminKey: ADMIN_KEY, acao: 'listar' })
+      .then(function(d) {
+        if (d.ok) {
+          document.getElementById('login-screen').style.display = 'none';
+          renderTokens(d.tokens || []);
+          atualizarStats(d.tokens || []);
+          atualizarStatusN8n();
+        } else {
+          // Chave inválida → limpa e mostra tela de login
+          localStorage.removeItem(KEY_ADMIN);
+          ADMIN_KEY = '';
+          document.getElementById('login-screen').style.display = 'flex';
+          document.getElementById('admin-key').focus();
+        }
+      })
+      .catch(function() {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('admin-key').focus();
+      });
+  } else {
+    // Sem chave salva → mostra tela de login
+    document.getElementById('login-screen').style.display = 'flex';
+    setTimeout(function() { document.getElementById('admin-key').focus(); }, 100);
+  }
 });
 
 // ── CRIAR PLANILHA VIA WEBHOOK N8N ────────────────────────────

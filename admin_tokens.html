@@ -849,13 +849,20 @@ function testarConexao() {
   status.textContent = 'Testando…';
   result.innerHTML = '';
   const t0 = Date.now();
-  jsonpCall({ action: 'ping', sheetId: 'test' }, 12000)
-    .then(function() {
+  jsonpCall({ action: 'adminTokens', adminKey: ADMIN_KEY, acao: 'listar' }, 12000)
+    .then(function(d) {
       const ms = Date.now() - t0;
-      dot.className = 'dot dot-ok';
-      status.textContent = 'Conectado (' + ms + 'ms)';
-      document.getElementById('ss-gas-dot').className = 'dot dot-ok';
-      result.innerHTML = '<div class="rbox rbox-ok">✅ GAS respondeu em ' + ms + 'ms</div>';
+      if (d.ok) {
+        dot.className = 'dot dot-ok';
+        status.textContent = 'Conectado (' + ms + 'ms)';
+        document.getElementById('ss-gas-dot').className = 'dot dot-ok';
+        result.innerHTML = '<div class="rbox rbox-ok">✅ GAS respondeu em ' + ms + 'ms</div>';
+      } else {
+        dot.className = 'dot dot-err';
+        status.textContent = 'Falha na conexão';
+        document.getElementById('ss-gas-dot').className = 'dot dot-err';
+        result.innerHTML = '<div class="rbox rbox-err">❌ ' + (d.msg || 'Resposta inválida') + '</div>';
+      }
     })
     .catch(function(err) {
       dot.className = 'dot dot-err';

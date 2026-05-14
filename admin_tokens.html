@@ -157,10 +157,14 @@ tr:hover td{background:#fafafa}
       </div>
     </div>
 
-    <!-- Bancos de dados liberados -->
-    <div style="margin-bottom:14px">
+    <!-- Status n8n + Bancos de dados -->
+    <div id="n8n-status-bar" style="display:none;margin-bottom:14px;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;font-size:12px;color:#065f46;display:flex;align-items:center;gap:8px">
+      🔌 <span><b>Planilha automática ativa</b> — ao clicar em Gerar, o n8n criará a planilha do cliente automaticamente. Não é preciso adicionar banco manualmente.</span>
+    </div>
+
+    <div style="margin-bottom:14px" id="f-databases-wrapper">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.3px">Bancos de dados liberados</label>
+        <label style="font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.3px">Bancos de dados liberados <span id="db-label-hint" style="font-size:10px;font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0">(ou configure o webhook n8n para criar automaticamente)</span></label>
         <button class="btn btn-outline btn-sm" onclick="dbAddRow()" type="button">+ Adicionar banco</button>
       </div>
       <div id="f-databases" style="display:flex;flex-direction:column;gap:6px"></div>
@@ -303,10 +307,16 @@ tr:hover td{background:#fafafa}
         <div class="hint">Usada em todas as chamadas ao servidor. Atualize após redeployar o GAS.</div>
       </div>
 
-      <div class="field" style="margin-bottom:20px">
+      <div class="field" style="margin-bottom:16px">
         <label>URL do banco de dados <span style="font-weight:400;color:#9ca3af">(opcional)</span></label>
         <input id="cfg-db-url" placeholder="https://meubackend.com/api  ou  supabase URL..." style="font-family:monospace;font-size:11px">
         <div class="hint">Incluída no código completo enviado ao cliente. Deixe vazio se não usar.</div>
+      </div>
+
+      <div class="field" style="margin-bottom:20px">
+        <label>🔌 Webhook n8n — criar planilha automaticamente <span style="font-weight:400;color:#9ca3af">(opcional)</span></label>
+        <input id="cfg-n8n-url" placeholder="https://...n8n.../webhook/binho-criar-planilha" style="font-family:monospace;font-size:11px">
+        <div class="hint">Quando configurado, a planilha do cliente é criada automaticamente ao gerar o token — sem precisar colar Sheet ID manualmente.</div>
       </div>
 
       <button class="btn btn-primary" style="width:100%" onclick="salvarConexoes()">💾 Salvar configurações</button>
@@ -383,6 +393,7 @@ const DEFAULT_GAS      = 'https://script.google.com/macros/s/AKfycbwdBGtYKmiZo_X
 const KEY_ADMIN        = '_admin_key';
 const KEY_GAS_URL      = '_gas_url';
 const KEY_DB_URL       = '_db_url';
+const KEY_N8N_URL      = '_n8n_url';
 const ADMIN_FIXED_KEY  = 'CATADMIN2025';
 
 let ADMIN_KEY     = ADMIN_FIXED_KEY;
@@ -392,6 +403,7 @@ let TOKENS_CACHE  = [];
 
 function getGasUrl() { return DEFAULT_GAS; }
 function getDbUrl()  { return localStorage.getItem(KEY_DB_URL) || ''; }
+function getN8nUrl() { return localStorage.getItem(KEY_N8N_URL) || ''; }
 function dbsArray(value) {
   if (Array.isArray(value)) return value;
   if (!value) return [];
@@ -462,18 +474,54 @@ document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('login-screen').style.display = 'none';
   ADMIN_KEY = ADMIN_FIXED_KEY;
   document.getElementById('admin-key').value = ADMIN_FIXED_KEY;
+  atualizarStatusN8n();
   carregarTokens();
 });
 
+// ── CRIAR PLANILHA VIA WEBHOOK N8N ────────────────────────────
+async function criarPlanilhaViaWebhook(nome) {
+  const url = getN8nUrl();
+  if (!url) throw new Error('Webhook n8n não configurado');
+  const r = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nome: nome })
+  });
+  if (!r.ok) throw new Error('n8n retornou erro ' + r.status);
+  const d = await r.json();
+  const sheetId = d.sheet_id || d.id;
+  if (!sheetId) throw new Error('n8n não retornou sheet_id — verifique o fluxo');
+  return sheetId;
+}
+
 // ── GERAR TOKEN ───────────────────────────────────────────────
-function gerarToken() {
+async function gerarToken() {
   const cliente = document.getElementById('f-cliente').value.trim();
   const dias    = document.getElementById('f-dias').value;
   if (!cliente) { showToast('⚠️ Informe o nome do cliente'); return; }
 
   const gasUrl    = document.getElementById('f-gasurl').value.trim();
-  const databases = dbGetRows();
-  if (!databases.length) { showToast('⚠️ Adicione ao menos um banco de dados'); return; }
+  let databases   = dbGetRows();
+  const n8nUrl    = getN8nUrl();
+
+  // Cria planilha automaticamente se webhook configurado e sem banco manual
+  if (n8nUrl && !databases.length) {
+    const btn = document.querySelector('[onclick="gerarToken()"]');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Criando planilha...'; }
+    try {
+      showToast('⏳ Criando planilha no Google Drive...');
+      const sheetId = await criarPlanilhaViaWebhook(cliente);
+      databases = [{ name: cliente, sheetId: sheetId }];
+    } catch(e) {
+      showToast('❌ Erro ao criar planilha: ' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ Gerar token'; }
+      return;
+    }
+    if (btn) { btn.textContent = '⏳ Gerando token...'; }
+  }
+
+  if (!databases.length) { showToast('⚠️ Adicione ao menos um banco ou configure o webhook n8n'); return; }
+
   const sheetId = databases[0].sheetId || '';
   jsonpCall({ action: 'adminTokens', adminKey: ADMIN_KEY, acao: 'criar',
               cliente: cliente, dias: dias, sheetId: sheetId, gasUrl: gasUrl })
@@ -500,8 +548,27 @@ function gerarToken() {
       dbClearRows();
       carregarTokens();
       showToast('✅ Token gerado!');
+      const btn = document.querySelector('[onclick="gerarToken()"]');
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ Gerar token'; }
     })
-    .catch(function(err) { showToast('❌ ' + err.message); });
+    .catch(function(err) {
+      showToast('❌ ' + err.message);
+      const btn = document.querySelector('[onclick="gerarToken()"]');
+      if (btn) { btn.disabled = false; btn.textContent = '⚡ Gerar token'; }
+    });
+}
+
+function atualizarStatusN8n() {
+  const bar  = document.getElementById('n8n-status-bar');
+  const hint = document.getElementById('db-label-hint');
+  if (!bar) return;
+  if (getN8nUrl()) {
+    bar.style.display  = 'flex';
+    if (hint) hint.style.display = 'none';
+  } else {
+    bar.style.display  = 'none';
+    if (hint) hint.style.display = '';
+  }
 }
 
 function cadastrarDatabases(token, databases, gasUrl) {
@@ -828,19 +895,24 @@ function verificarSistema() { testarConexao(); }
 function preencherConexoes() {
   document.getElementById('cfg-gas-url').value = getGasUrl();
   document.getElementById('cfg-db-url').value  = getDbUrl();
+  document.getElementById('cfg-n8n-url').value = getN8nUrl();
   atualizarPreviewPayload();
+  atualizarStatusN8n();
 }
 
 function salvarConexoes() {
   const gasUrl = document.getElementById('cfg-gas-url').value.trim();
   const dbUrl  = document.getElementById('cfg-db-url').value.trim();
+  const n8nUrl = document.getElementById('cfg-n8n-url').value.trim();
   const el     = document.getElementById('cfg-result');
   if (!gasUrl) { el.innerHTML = '<div class="rbox rbox-err">URL do GAS não pode ser vazia.</div>'; return; }
   localStorage.setItem(KEY_GAS_URL, gasUrl);
   localStorage.setItem(KEY_DB_URL,  dbUrl);
+  localStorage.setItem(KEY_N8N_URL, n8nUrl);
   el.innerHTML = '<div class="rbox rbox-ok">✅ Configurações salvas!</div>';
   setTimeout(function() { el.innerHTML = ''; }, 3000);
   atualizarPreviewPayload();
+  atualizarStatusN8n();
   showToast('✅ URLs salvas com sucesso!');
 }
 

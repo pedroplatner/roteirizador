@@ -719,8 +719,9 @@ function renderTokens(tokens) {
           '<button class="btn btn-outline btn-sm" onclick="openBancosModalByToken(\'' + t.token + '\')" style="margin-right:4px" title="Gerenciar bancos">🗄️ Bancos</button>'
           + (t.status === 'ATIVO'
             ? '<button class="btn btn-success btn-sm" onclick="renovarToken(\'' + t.token + '\')" style="margin-right:4px">+30d</button>'
-              + '<button class="btn btn-danger btn-sm" onclick="revogarToken(\'' + t.token + '\')">🚫</button>'
-            : '<button class="btn btn-outline btn-sm" onclick="renovarToken(\'' + t.token + '\')">↺ Renovar</button>');
+              + '<button class="btn btn-danger btn-sm" onclick="revogarToken(\'' + t.token + '\')" title="Revogar">🚫</button>'
+            : '<button class="btn btn-outline btn-sm" onclick="renovarToken(\'' + t.token + '\')" style="margin-right:4px">↺ Renovar</button>'
+              + '<button class="btn btn-danger btn-sm" onclick="excluirToken(\'' + t.token + '\',\'' + escAttr(t.cliente||'') + '\')" title="Excluir permanentemente">🗑️</button>');
         const criadoFmt = (t.criado||'').toString().replace('T',' ').slice(0,16).replace(/-/g,'/');
         const expiraFmt = (t.expira||'').toString().replace('T',' ').slice(0,10).replace(/-/g,'/');
         const acessoFmt = (t.ultimoAcesso||'').toString().replace('T',' ').slice(0,16).replace(/-/g,'/');
@@ -757,6 +758,20 @@ function renovarToken(token) {
     .then(function(d) {
       showToast(d.ok ? '✅ Renovado até ' + d.expira : '❌ ' + (d.msg || 'Erro'));
       carregarTokens();
+    })
+    .catch(function(err) { showToast('❌ ' + err.message); });
+}
+
+function excluirToken(token, cliente) {
+  if (!confirm('EXCLUIR PERMANENTEMENTE o token de "' + cliente + '"?\n\nToken: ' + token + '\n\nIsso remove a linha da planilha. Não dá pra desfazer.')) return;
+  jsonpCall({ action: 'adminTokens', adminKey: ADMIN_KEY, acao: 'excluir', token: token })
+    .then(function(d) {
+      if (d.ok) {
+        showToast('🗑️ Token excluído!');
+        carregarTokens();
+      } else {
+        showToast('❌ ' + (d.msg || 'Erro ao excluir — verifique se o GAS foi atualizado'));
+      }
     })
     .catch(function(err) { showToast('❌ ' + err.message); });
 }

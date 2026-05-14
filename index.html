@@ -62,41 +62,41 @@
         validateToken(tok)
           .then(function(d) {
             if (d.ok) {
-              var prevTok = localStorage.getItem(TOK_KEY);
-              var tokenMudou = prevTok && prevTok !== tok;
+              var db0 = (d.databases && d.databases.length) ? d.databases[0] : null;
+              var prevSheetId = localStorage.getItem('rotas_sheet_id_v1') || '';
+              var newSheetId  = db0 ? (db0.sheetId || '') : '';
 
-              // Salva token e config
+              // Sempre salva token e config
               localStorage.setItem(TOK_KEY, tok);
               localStorage.setItem(CFG_KEY, JSON.stringify({
                 databases: d.databases || [], gasUrl: d.gasUrl || '',
                 cliente: d.cliente || '', expira: d.expira || ''
               }));
+              if (db0 && db0.gasUrl)  localStorage.setItem('rotas_sheets_url_v1', db0.gasUrl);
+              if (db0 && db0.sheetId) localStorage.setItem('rotas_sheet_id_v1',   db0.sheetId);
 
-              // Configura sheetsUrl e sheetId automaticamente do banco do token
-              if (d.databases && d.databases.length) {
-                var db0 = d.databases[0];
-                if (db0 && db0.gasUrl)  localStorage.setItem('rotas_sheets_url_v1', db0.gasUrl);
-                if (db0 && db0.sheetId) localStorage.setItem('rotas_sheet_id_v1',   db0.sheetId);
-              }
-
-              // Se token mudou, limpar dados antigos e recarregar a página limpa
-              if (tokenMudou) {
+              // Se o banco mudou (cliente novo ou diferente): limpa dados e recarrega
+              // Na nova carga: loadStored() retorna null → mapa zerado
+              // sheetsUrl já está no localStorage → initSheetsUI popula o campo
+              if (newSheetId && newSheetId !== prevSheetId) {
                 ['rotas_cat_v9','rotas_van_cfg_v1','rotas_sheet_times_v1',
                  'rotas_sheet_cfg_v1','rotas_stops_real_routes_v1'].forEach(function(k){ localStorage.removeItem(k); });
                 location.reload();
                 return;
               }
 
+              // Mesmo banco: atualiza variáveis e campos de UI sem recarregar
               window._rcat_cfg = { databases: d.databases||[], gasUrl: d.gasUrl||'', cliente: d.cliente||'', expira: d.expira||'' };
+              if (db0) {
+                try { window.sheetsUrl = db0.gasUrl  || ''; } catch(e){}
+                try { window.sheetId   = db0.sheetId || ''; } catch(e){}
+                try { var elS = document.getElementById('sheets-url');    if(elS) elS.value = db0.gasUrl  || ''; } catch(e){}
+                try { var elI = document.getElementById('sheet-id-input'); if(elI) elI.value = db0.sheetId || ''; } catch(e){}
+              }
               if (d.databases && d.databases.length) {
                 window._rcat_pending_databases = d.databases;
                 if (typeof clientsInjectFromToken === 'function') {
                   try { clientsInjectFromToken(d.databases); } catch(e) { console.warn('Falha ao aplicar bancos do token:', e); }
-                }
-                var db0 = d.databases[0];
-                if (db0) {
-                  try { window.sheetsUrl = db0.gasUrl || ''; } catch(e){}
-                  try { window.sheetId  = db0.sheetId || ''; } catch(e){}
                 }
               }
               document.getElementById('_guard_ov').remove();

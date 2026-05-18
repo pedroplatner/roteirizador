@@ -367,19 +367,19 @@ document.addEventListener('DOMContentLoaded', function(){
 
       <div class="field" style="margin-bottom:16px">
         <label>URL do Google Apps Script (GAS)</label>
-        <input id="cfg-gas-url" placeholder="https://script.google.com/macros/s/..." style="font-family:monospace;font-size:11px">
+        <input id="cfg-gas-url" placeholder="https://script.google.com/macros/s/..." style="font-family:monospace;font-size:11px" onblur="salvarConexoes(true)">
         <div class="hint">Usada em todas as chamadas ao servidor. Atualize após redeployar o GAS.</div>
       </div>
 
       <div class="field" style="margin-bottom:16px">
         <label>URL do banco de dados <span style="font-weight:400;color:#9ca3af">(opcional)</span></label>
-        <input id="cfg-db-url" placeholder="https://meubackend.com/api  ou  supabase URL..." style="font-family:monospace;font-size:11px">
+        <input id="cfg-db-url" placeholder="https://meubackend.com/api  ou  supabase URL..." style="font-family:monospace;font-size:11px" onblur="salvarConexoes(true)">
         <div class="hint">Incluída no código completo enviado ao cliente. Deixe vazio se não usar.</div>
       </div>
 
       <div class="field" style="margin-bottom:20px">
         <label>🔌 Webhook n8n — criar planilha automaticamente <span style="font-weight:400;color:#9ca3af">(opcional)</span></label>
-        <input id="cfg-n8n-url" placeholder="https://...n8n.../webhook/binho-criar-planilha" style="font-family:monospace;font-size:11px">
+        <input id="cfg-n8n-url" placeholder="https://...n8n.../webhook/binho-criar-planilha" style="font-family:monospace;font-size:11px" onblur="salvarConexoes(true)">
         <div class="hint">Quando configurado, a planilha do cliente é criada automaticamente ao gerar o token — sem precisar colar Sheet ID manualmente.</div>
       </div>
 
@@ -1009,20 +1009,28 @@ function preencherConexoes() {
   atualizarStatusN8n();
 }
 
-function salvarConexoes() {
+function salvarConexoes(silent) {
   const gasUrl = document.getElementById('cfg-gas-url').value.trim();
   const dbUrl  = document.getElementById('cfg-db-url').value.trim();
   const n8nUrl = document.getElementById('cfg-n8n-url').value.trim();
   const el     = document.getElementById('cfg-result');
-  if (!gasUrl) { el.innerHTML = '<div class="rbox rbox-err">URL do GAS não pode ser vazia.</div>'; return; }
+  if (!gasUrl) {
+    if (!silent && el) el.innerHTML = '<div class="rbox rbox-err">URL do GAS não pode ser vazia.</div>';
+    return;
+  }
   localStorage.setItem(KEY_GAS_URL, gasUrl);
   localStorage.setItem(KEY_DB_URL,  dbUrl);
   localStorage.setItem(KEY_N8N_URL, n8nUrl);
-  el.innerHTML = '<div class="rbox rbox-ok">✅ Configurações salvas!</div>';
-  setTimeout(function() { el.innerHTML = ''; }, 3000);
   atualizarPreviewPayload();
   atualizarStatusN8n();
-  showToast('✅ URLs salvas com sucesso!');
+  if (silent) {
+    if (el) el.innerHTML = '<div class="rbox rbox-ok" style="padding:6px 10px;font-size:11px">💾 Salvo automaticamente</div>';
+    setTimeout(function() { if (el) el.innerHTML = ''; }, 1500);
+  } else {
+    if (el) el.innerHTML = '<div class="rbox rbox-ok">✅ Configurações salvas!</div>';
+    setTimeout(function() { if (el) el.innerHTML = ''; }, 3000);
+    showToast('✅ URLs salvas com sucesso!');
+  }
 }
 
 function atualizarPreviewPayload() {

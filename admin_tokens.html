@@ -455,6 +455,7 @@ document.addEventListener('DOMContentLoaded', function(){
 // ── Constantes ────────────────────────────────────────────────
 const DEFAULT_GAS      = 'https://script.google.com/macros/s/AKfycbwdBGtYKmiZo_XFZM98CH6KtTy83AW78uCQa_s5RCKbkvASvH8eiG75StiEFRALHvc0Dg/exec';
 const PROXY_URL        = 'https://awkwardlookingfrilledshark-n8n.cloudfy.live/webhook/gas-proxy';
+const DEFAULT_N8N_URL  = 'https://awkwardlookingfrilledshark-n8n.cloudfy.live/webhook/gas-proxy';
 const KEY_ADMIN        = '_admin_key';
 const KEY_GAS_URL      = '_gas_url';
 const KEY_DB_URL       = '_db_url';
@@ -467,7 +468,7 @@ let TOKENS_CACHE  = [];
 
 function getGasUrl() { return DEFAULT_GAS; }
 function getDbUrl()  { return localStorage.getItem(KEY_DB_URL) || ''; }
-function getN8nUrl() { return localStorage.getItem(KEY_N8N_URL) || ''; }
+function getN8nUrl() { return localStorage.getItem(KEY_N8N_URL) || DEFAULT_N8N_URL; }
 function dbsArray(value) {
   if (Array.isArray(value)) return value;
   if (!value) return [];

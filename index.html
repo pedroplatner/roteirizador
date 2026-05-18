@@ -16,23 +16,116 @@
     document.getElementById('_guard_ov')?.remove();
     const ov = document.createElement('div');
     ov.id = '_guard_ov';
-    ov.style.cssText = 'position:fixed;inset:0;background:#0f172a;z-index:99999;display:flex;align-items:center;justify-content:center;font-family:Arial,sans-serif';
+    if (!document.getElementById('_guard_style')) {
+      var st = document.createElement('style');
+      st.id = '_guard_style';
+      st.textContent = `
+        @keyframes _g_bgFlow {
+          0%   { background-position: 0% 50%; }
+          50%  { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes _g_floatOrb1 {
+          0%,100% { transform: translate(0,0) scale(1); }
+          50%     { transform: translate(80px,-60px) scale(1.15); }
+        }
+        @keyframes _g_floatOrb2 {
+          0%,100% { transform: translate(0,0) scale(1); }
+          50%     { transform: translate(-100px,80px) scale(.9); }
+        }
+        @keyframes _g_floatOrb3 {
+          0%,100% { transform: translate(0,0) scale(1); }
+          50%     { transform: translate(60px,100px) scale(1.1); }
+        }
+        @keyframes _g_cardIn {
+          0%   { opacity:0; transform: translateY(20px) scale(.96); }
+          100% { opacity:1; transform: translateY(0) scale(1); }
+        }
+        @keyframes _g_shimmer {
+          0%   { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
+        @keyframes _g_lockPulse {
+          0%,100% { transform: scale(1); filter: drop-shadow(0 4px 12px rgba(96,165,250,.3)); }
+          50%     { transform: scale(1.05); filter: drop-shadow(0 8px 20px rgba(96,165,250,.6)); }
+        }
+        @keyframes _g_spin { to { transform: rotate(360deg); } }
+        #_guard_ov { position:fixed; inset:0; z-index:99999; display:flex; align-items:center; justify-content:center;
+          font-family:'Inter','Segoe UI',Arial,sans-serif; overflow:hidden;
+          background: radial-gradient(ellipse at top, #1e293b 0%, #0f172a 50%, #020617 100%); }
+        #_guard_ov::before { content:''; position:absolute; inset:0;
+          background: linear-gradient(120deg, rgba(59,130,246,.15), rgba(139,92,246,.12), rgba(14,165,233,.15), rgba(99,102,241,.12));
+          background-size: 400% 400%; animation: _g_bgFlow 18s ease-in-out infinite; pointer-events:none; }
+        .g-orb { position:absolute; border-radius:50%; filter: blur(60px); opacity:.5; pointer-events:none; }
+        .g-orb-1 { width:380px; height:380px; top:-100px; left:-100px;
+          background: radial-gradient(circle, #3b82f6 0%, transparent 70%); animation: _g_floatOrb1 14s ease-in-out infinite; }
+        .g-orb-2 { width:340px; height:340px; bottom:-80px; right:-80px;
+          background: radial-gradient(circle, #8b5cf6 0%, transparent 70%); animation: _g_floatOrb2 16s ease-in-out infinite; }
+        .g-orb-3 { width:280px; height:280px; top:50%; left:50%; transform:translate(-50%,-50%);
+          background: radial-gradient(circle, #06b6d4 0%, transparent 70%); animation: _g_floatOrb3 20s ease-in-out infinite; }
+        .g-card { position:relative; z-index:2;
+          background: linear-gradient(145deg, rgba(30,41,59,.85) 0%, rgba(15,23,42,.9) 100%);
+          backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+          border:1px solid rgba(148,163,184,.15); border-radius:20px;
+          padding:44px 44px 36px; max-width:420px; width:92%; text-align:center;
+          box-shadow: 0 25px 50px -12px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.05) inset, 0 1px 0 0 rgba(255,255,255,.08) inset;
+          animation: _g_cardIn .7s cubic-bezier(.16,1,.3,1); }
+        .g-card::before { content:''; position:absolute; inset:0; border-radius:20px; padding:1px;
+          background: linear-gradient(135deg, rgba(96,165,250,.5), transparent 40%, transparent 60%, rgba(139,92,246,.5));
+          -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+          -webkit-mask-composite: xor; mask-composite: exclude; pointer-events:none; }
+        .g-lock { font-size:48px; margin-bottom:18px; display:inline-block; animation: _g_lockPulse 3s ease-in-out infinite; }
+        .g-title { font-size:22px; font-weight:800; margin-bottom:8px; letter-spacing:-.5px;
+          background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+          -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .g-msg { font-size:13px; color:#94a3b8; margin-bottom:26px; line-height:1.6; }
+        .g-input-wrap { position:relative; margin-bottom:14px; }
+        .g-input { width:100%; padding:13px 16px; border-radius:10px;
+          border:1px solid rgba(71,85,105,.6); background:rgba(2,6,23,.6);
+          color:#f1f5f9; font-size:14px; text-align:center;
+          outline:none; letter-spacing:2px; font-family:'JetBrains Mono','Consolas',monospace;
+          transition: border-color .3s, box-shadow .3s, background .3s; }
+        .g-input::placeholder { color:#475569; letter-spacing:1.5px; }
+        .g-input:focus { border-color:rgba(96,165,250,.7); background:rgba(2,6,23,.85);
+          box-shadow: 0 0 0 4px rgba(96,165,250,.12), 0 0 30px rgba(96,165,250,.15); }
+        .g-btn { position:relative; width:100%; padding:13px; border-radius:10px;
+          border:none; cursor:pointer; font-size:14px; font-weight:700; color:#fff; letter-spacing:.3px;
+          background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+          background-size: 200% 200%; overflow:hidden;
+          box-shadow: 0 10px 30px -8px rgba(59,130,246,.5), 0 0 0 1px rgba(255,255,255,.1) inset, 0 1px 0 0 rgba(255,255,255,.2) inset;
+          transition: transform .2s cubic-bezier(.34,1.56,.64,1), box-shadow .25s, background-position .6s; }
+        .g-btn::before { content:''; position:absolute; inset:0;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,.3), transparent);
+          background-size: 200% 100%; animation: _g_shimmer 3s linear infinite; pointer-events:none; }
+        .g-btn:hover { transform: translateY(-2px); background-position: 100% 0;
+          box-shadow: 0 15px 35px -8px rgba(99,102,241,.6), 0 0 0 1px rgba(255,255,255,.15) inset, 0 1px 0 0 rgba(255,255,255,.25) inset; }
+        .g-btn:active { transform: translateY(0); }
+        .g-btn:disabled { opacity:.6; cursor:wait; }
+        .g-spinner { display:inline-block; width:14px; height:14px;
+          border:2px solid rgba(255,255,255,.3); border-top-color:#fff;
+          border-radius:50%; animation: _g_spin .7s linear infinite; vertical-align:-2px; margin-right:7px; }
+        .g-err { font-size:11px; color:#fca5a5; margin-top:10px; min-height:16px; transition: color .2s; }
+        .g-footer { font-size:10px; color:#475569; margin-top:20px; letter-spacing:.3px; }
+      `;
+      document.head.appendChild(st);
+    }
     ov.innerHTML = `
-      <div style="background:#1e293b;border-radius:16px;padding:40px 44px;max-width:420px;width:92%;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.7)">
-        <div style="font-size:52px;margin-bottom:14px">${allowInput ? '🔐' : '🔒'}</div>
-        <div style="font-size:21px;font-weight:800;color:#f1f5f9;margin-bottom:8px">Rotas Caterpillar</div>
-        <div id="_g_msg" style="font-size:13px;color:#94a3b8;margin-bottom:22px;line-height:1.6">${msg}</div>
+      <div class="g-orb g-orb-1"></div>
+      <div class="g-orb g-orb-2"></div>
+      <div class="g-orb g-orb-3"></div>
+      <div class="g-card">
+        <div class="g-lock">${allowInput ? '🔐' : '🔒'}</div>
+        <div class="g-title">Rotas Caterpillar</div>
+        <div id="_g_msg" class="g-msg">${msg}</div>
         ${allowInput ? `
-          <input id="_g_in" type="text" placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
-            style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid #334155;background:#0f172a;color:#f1f5f9;font-size:14px;text-align:center;margin-bottom:10px;outline:none;letter-spacing:2px;font-family:monospace">
-          <button id="_g_btn"
-            style="width:100%;padding:12px;border-radius:8px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;border:none;cursor:pointer">
-            ✓ Validar acesso
-          </button>
-          <div id="_g_err" style="font-size:11px;color:#ef4444;margin-top:10px;min-height:16px"></div>
-          <div style="font-size:10px;color:#334155;margin-top:18px">Este acesso é pessoal e intransferível</div>
+          <div class="g-input-wrap">
+            <input id="_g_in" class="g-input" type="text" placeholder="XXXXX - XXXXX - XXXXX - XXXXX - XXXXX">
+          </div>
+          <button id="_g_btn" class="g-btn">✓ Validar acesso</button>
+          <div id="_g_err" class="g-err"></div>
+          <div class="g-footer">Este acesso é pessoal e intransferível</div>
         ` : `
-          <div style="font-size:11px;color:#475569;margin-top:8px">Entre em contato com o fornecedor para renovar.</div>
+          <div class="g-footer" style="margin-top:8px">Entre em contato com o fornecedor para renovar.</div>
         `}
       </div>`;
     document.body.appendChild(ov);
@@ -56,7 +149,7 @@
         var tok = inp.value.trim();
         if (tok.replace(/-/g,'').length < 10) { err.textContent = 'Token incompleto.'; return; }
         btn.disabled = true;
-        btn.textContent = 'Verificando...';
+        btn.innerHTML = '<span class="g-spinner"></span>Verificando...';
         err.textContent = '';
 
         validateToken(tok)
@@ -104,7 +197,7 @@
             } else {
               err.textContent = d.msg || 'Token inválido.';
               btn.disabled = false;
-              btn.textContent = '✓ Validar acesso';
+              btn.innerHTML = '✓ Validar acesso';
               inp.select();
             }
           })

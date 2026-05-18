@@ -103,6 +103,48 @@ tr:hover td{background:#fafafa}
 .toast{position:fixed;bottom:24px;right:24px;background:#1a2e4a;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none}
 .toast.show{opacity:1}
 .empty{text-align:center;color:#9ca3af;padding:32px;font-size:13px}
+
+/* Theme toggle button */
+.theme-toggle{margin-left:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 11px;border-radius:5px;cursor:pointer;font-size:13px;line-height:1}
+.theme-toggle:hover{background:rgba(255,255,255,.18)}
+
+/* ═══════════════════ DARK THEME OVERRIDE ═══════════════════ */
+html[data-theme="dark"] body{background:#0f172a;color:#e2e8f0}
+html[data-theme="dark"] header{background:#020617;border-bottom:1px solid #1e293b}
+html[data-theme="dark"] .tabs{background:#1e293b;border-bottom-color:#334155}
+html[data-theme="dark"] .tab-btn{color:#94a3b8}
+html[data-theme="dark"] .tab-btn:hover{color:#f1f5f9}
+html[data-theme="dark"] .tab-btn.active{color:#60a5fa;border-bottom-color:#60a5fa}
+html[data-theme="dark"] .card{background:#1e293b;box-shadow:0 1px 4px rgba(0,0,0,.4);border:1px solid #334155}
+html[data-theme="dark"] .card h3{color:#f1f5f9;border-bottom-color:#334155}
+html[data-theme="dark"] .field label{color:#cbd5e1}
+html[data-theme="dark"] .field input,
+html[data-theme="dark"] .field select{background:#0f172a;border-color:#334155;color:#f1f5f9}
+html[data-theme="dark"] .field input::placeholder{color:#64748b}
+html[data-theme="dark"] .field .hint{color:#64748b}
+html[data-theme="dark"] .stat{background:#1e293b;border:1px solid #334155;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+html[data-theme="dark"] .stat-n{color:#f1f5f9}
+html[data-theme="dark"] .stat-l{color:#94a3b8}
+html[data-theme="dark"] table{color:#e2e8f0}
+html[data-theme="dark"] th{background:#0f172a;color:#cbd5e1;border-bottom-color:#334155}
+html[data-theme="dark"] td{color:#e2e8f0;border-bottom-color:#1e293b}
+html[data-theme="dark"] tr:hover td{background:#293548}
+html[data-theme="dark"] .token-mono{color:#93c5fd}
+html[data-theme="dark"] .token-mono:hover{color:#60a5fa}
+html[data-theme="dark"] .mono-box{background:#0f172a;border-color:#334155;color:#cbd5e1}
+html[data-theme="dark"] .cfg-row{border-bottom-color:#334155}
+html[data-theme="dark"] .cfg-label{color:#cbd5e1}
+html[data-theme="dark"] .btn-outline{background:#1e293b;border-color:#475569;color:#e2e8f0}
+html[data-theme="dark"] .btn-outline:hover{background:#334155}
+html[data-theme="dark"] .rbox-ok{background:rgba(22,163,74,.12);border-color:rgba(134,239,172,.3);color:#86efac}
+html[data-theme="dark"] .rbox-err{background:rgba(220,38,38,.12);border-color:rgba(252,165,165,.3);color:#fca5a5}
+html[data-theme="dark"] .rbox-info{background:rgba(37,99,235,.12);border-color:rgba(147,197,253,.3);color:#93c5fd}
+html[data-theme="dark"] .badge-ativo{background:rgba(22,163,74,.2);color:#86efac}
+html[data-theme="dark"] .badge-expirado{background:rgba(217,119,6,.2);color:#fcd34d}
+html[data-theme="dark"] .badge-revogado{background:rgba(220,38,38,.2);color:#fca5a5}
+html[data-theme="dark"] #token-gerado{background:rgba(22,163,74,.1);border-color:rgba(134,239,172,.3);color:#86efac}
+html[data-theme="dark"] .empty{color:#64748b}
+html[data-theme="dark"] .toast{background:#020617;border:1px solid #334155}
 </style>
 </head>
 <body>
@@ -123,8 +165,27 @@ tr:hover td{background:#fafafa}
   <span style="font-size:22px">🔑</span>
   <h1>Painel Admin — Tokens de Acesso</h1>
   <span class="info">Via Gestão</span>
-  <button onclick="logoutAdmin()" title="Sair do admin" style="margin-left:12px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:11px">🚪 Sair</button>
+  <button id="theme-toggle-btn" class="theme-toggle" onclick="toggleTheme()" title="Alternar tema claro/escuro">🌙</button>
+  <button onclick="logoutAdmin()" title="Sair do admin" style="margin-left:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;padding:5px 12px;border-radius:5px;cursor:pointer;font-size:11px">🚪 Sair</button>
 </header>
+<script>
+(function(){
+  var saved = localStorage.getItem('admin_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+})();
+function toggleTheme(){
+  var cur = document.documentElement.getAttribute('data-theme') || 'light';
+  var next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('admin_theme', next);
+  var btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
+}
+document.addEventListener('DOMContentLoaded', function(){
+  var btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = document.documentElement.getAttribute('data-theme') === 'dark' ? '☀️' : '🌙';
+});
+</script>
 
 <!-- ABAS -->
 <div class="tabs">

@@ -700,6 +700,12 @@ button{border:none;border-radius:4px;padding:5px 10px;font-size:12px;cursor:poin
 #stops-list{overflow-y:auto;padding:6px 8px;flex:1;min-height:0}
 .stop-card{display:grid;grid-template-columns:22px 1fr auto;gap:6px;align-items:center;border:1px solid #d1d5db;border-radius:8px;padding:5px 6px;margin-bottom:4px;background:#fff;cursor:grab}
 .stop-card:hover{background:#f0f6ff;border-color:#93c5fd}
+.stop-card.stop-active{background:#eff6ff;border-color:#2563eb;border-width:2px}
+@keyframes markerPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(250,210,0,0);outline:2px solid transparent}
+  50%{box-shadow:0 0 0 10px rgba(250,210,0,.45);outline:2px solid rgba(255,220,0,.9)}
+}
+.marker-pulse{animation:markerPulse .75s ease-in-out infinite!important;border-radius:4px}
 .stop-card.dragging{opacity:.45}
 .stop-dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700}
 .stop-info{min-width:0}
@@ -903,7 +909,7 @@ function _gerRenameCustom(type,oldVal,newVal){
 <div id="header">
   <h1>🗺️ Rotas</h1>
   <span class="badge">ViaGestão</span>
-  <span class="save-ind ok" id="save-ind">💾 Salvo</span>
+  <span class="save-ind no" id="save-ind" title="O navegador é apenas rascunho local. Clique em 💾 ou ↑ Sync para salvar na planilha.">⚠️ Não salvo no Sheets</span>
   <span id="lib-count" style="font-size:10px;opacity:.6"></span>
   <span id="sheets-status-hdr" class="sync-status" style="font-size:10px;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,.1)">☁️ Google Sheets: não conectado</span>
   <span style="font-size:10px;opacity:.4;margin-left:auto">v12</span>
@@ -1037,6 +1043,7 @@ function _gerRenameCustom(type,oldVal,newVal){
       <button class="bg" id="btn-lib-import" onclick="document.getElementById('geo-lib-input').click()" title="Importar biblioteca de endereços" style="font-size:11px;padding:4px 10px">📥 LIB up</button>
       <button class="br" id="btn-lib-clear" onclick="clearGeoLibrary()" title="Limpar cache local de endereços/coordenadas" style="font-size:11px;padding:4px 10px">🧹 Limpar cache</button>
       <button class="bg" id="btn-api-stats" onclick="toggleApiStats()" title="Contador de requisições de API" style="font-size:11px;padding:4px 10px">📡 Requisições</button>
+      <button class="bw" id="btn-emb-city" onclick="openEmbCityOverrideModal()" title="Cidades não atendidas: geocodificar embarque em outra cidade" style="font-size:11px;padding:4px 10px">🚫 Cidades</button>
     </div>
   </div>
 </div>
@@ -1116,9 +1123,9 @@ function _gerRenameCustom(type,oldVal,newVal){
           </div>
           <div class="stops-calc-row">
             <label title="Fator de tortuosidade das ruas (Haversine × fator = distância estimada)">Fator</label>
-            <input type="number" id="stops-hav-factor" min="1.00" max="2.00" step="0.05" value="1.30" style="width:58px" title="Fator haversine (1.00 = linha reta pura, 1.30 = padrão urbano)">
+            <input type="number" id="stops-hav-factor" min="1.00" max="2.00" step="0.05" value="1.15" style="width:58px" title="Fator haversine (1.00 = linha reta pura, 1.30 = padrão urbano)">
             <label title="Velocidade média estimada">km/h</label>
-            <input type="number" id="stops-speed-kmh" min="10" max="80" step="5" value="35" style="width:50px" title="Velocidade média (km/h)">
+            <input type="number" id="stops-speed-kmh" min="10" max="80" step="5" value="55" style="width:50px" title="Velocidade média (km/h)">
             <label title="Tempo máximo permitido para a rota">Limite</label>
             <input type="number" id="stops-max-min" min="30" max="300" step="5" value="100" style="width:54px" title="Tempo máximo da rota em minutos"><span class="mini">min</span>
           </div>
@@ -1488,6 +1495,22 @@ function _gerRenameCustom(type,oldVal,newVal){
           <div style="font-size:10px;color:#6b7280;flex-shrink:0">Aplicada a<br>todos os pax</div>
         </div>
         <div style="font-size:10px;color:#3b82f6;margin-top:5px">Equivale à coluna <b>Turno</b> na planilha Excel — define em qual grupo os passageiros ficam.</div>
+      <div id="pax-xlsx-analysis" style="display:none;margin-top:12px;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;background:#fff">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f8fafc;border-bottom:1px solid #e5e7eb;flex-wrap:wrap">
+          <b style="font-size:12px;color:#111827">🔎 Análise de rotas</b>
+          <span id="pax-xlsx-analysis-count" style="font-size:10px;color:#6b7280"></span>
+          <select id="pax-xlsx-analysis-filter" onchange="renderXlsxRouteAnalysis()" style="margin-left:auto;font-size:11px;height:26px;border:1px solid #d1d5db;border-radius:4px;padding:0 6px">
+            <option value="all">Todos</option>
+            <option value="ok">Com sugestão</option>
+            <option value="warn">Fora do raio</option>
+            <option value="err">Pendentes</option>
+          </select>
+          <button class="bw" id="btn-xlsx-analyze" type="button" onclick="analyzePendingXlsxRoutes()" style="font-size:11px;height:26px;padding:0 10px">Analisar rotas</button>
+          <button class="bg" type="button" onclick="toggleAllXlsxAnalysis(true)" style="font-size:10px;height:24px;padding:0 8px">Todos</button>
+          <button class="bg" type="button" onclick="toggleAllXlsxAnalysis(false)" style="font-size:10px;height:24px;padding:0 8px">Nenhum</button>
+        </div>
+        <div id="pax-xlsx-analysis-list" style="max-height:300px;overflow:auto;font-size:11px"></div>
+      </div>
       </div>
     </div>
     <div class="modal-actions">
@@ -2103,6 +2126,7 @@ let vanDestTimes={};
 let sheetDefaultTimes={};
 let markers={}, routePolys={}, destLines={}, destMarker=null;
 let selectedId=null, hiddenRoutes=new Set(), vanColors={}, focusedRouteKey=null;
+let activeListTab='list';
 let pendingDrag=null;
 let layers={showRoutes:true,showHome:true,showDest:true};
 let lightMode=(()=>{try{return localStorage.getItem(SK_LIGHT_MODE)==='1';}catch{return false;}})();
@@ -2167,6 +2191,7 @@ let radiusCircles={};
 let activeEditId=null;
 let pulseRecordIds=new Set();
 let pendingXlsxPax=[];
+let pendingXlsxAnalysis=[];
 let globalRadius=800;       // meters — global for all radii
 let allRadiiVisible=false;  // toggle all radii on map
 let extraMapLayers=[];      // layers added outside renderMap (roteirizador preview, stops panel, etc.)
@@ -2838,7 +2863,7 @@ function loadLib(){
   try{const d=JSON.parse(localStorage.getItem(SK_LIB)||'{}');geoLibrary=d||{};}catch{}
   updateLibCount();
 }
-function setSI(ok){const el=document.getElementById('save-ind');el.textContent=ok?'💾 Salvo':'⚠️ Não salvo';el.className='save-ind '+(ok?'ok':'no');}
+function setSI(ok, detail=''){const el=document.getElementById('save-ind');if(!el)return;el.textContent=ok?('✅ Salvo no Sheets'+(detail?' '+detail:'')):'⚠️ Não salvo no Sheets';el.title=ok?'Último salvamento confirmado na planilha Google Sheets':'O navegador é apenas rascunho local. Clique em 💾 ou ↑ Sync para salvar na planilha.';el.className='save-ind '+(ok?'ok':'no');}
 let saveTimer;
 function markDirty(){
   setSI(false);
@@ -2924,12 +2949,12 @@ function propagateCoordToDuplicates(source,type,lat,lng){
   if(!source||isNaN(+lat)||isNaN(+lng))return 0;
   const address=type==='casa'?source.endereco:source.embarque;
   if(!address)return 0;
-  const city=normCity(source.cidade)||'Curitiba';
+  const city=type==='emb'?getCidadeGeocode(source,'emb'):(normCity(source.cidade)||'Curitiba');
   const key=libKey(address,city);
   let count=0;
   allRecords.forEach(r=>{
     if(!r||r._id===source._id)return;
-    const recCity=normCity(r.cidade)||city;
+    const recCity=type==='emb'?getCidadeGeocode(r,'emb'):(normCity(r.cidade)||city);
     if(type==='casa'){
       if(r.lat_casa&&r.lon_casa)return;
       if(libKey(r.endereco,recCity)!==key)return;
@@ -2990,10 +3015,11 @@ function applyLibToRecords(){
       }
     }
     if((!r.lat_emb||!r.lon_emb)&&r.embarque){
-      const hit=libGet(r.embarque,cidade)||findSystemCoord(r.embarque,cidade,'emb',r._id);
+      const cidadeEmb=getCidadeGeocode(r,'emb');
+      const hit=libGet(r.embarque,cidadeEmb)||findSystemCoord(r.embarque,cidadeEmb,'emb',r._id);
       if(hit){
         r.lat_emb=hit.lat;r.lon_emb=hit.lng;r._modified=true;emb++;
-        if(hit.source==='Sistema')libSet(r.embarque,cidade,hit.lat,hit.lng,{kind:'embarque',source:'system-record'});
+        if(hit.source==='Sistema')libSet(r.embarque,cidadeEmb,hit.lat,hit.lng,{kind:'embarque',source:'system-record'});
       }
     }
   });
@@ -3072,8 +3098,11 @@ function showTab(tab){
     const el=document.getElementById('tab-'+t);
     if(el) el.className='sb-tab'+(t===tab?' active':'');
   });
+  const prevTab=activeListTab;
+  activeListTab=tab;
   if(tab==='novos') renderNovos();
   if(tab==='paradas'){populateStopsRoutes();renderStopsPanel();}
+  if((tab==='list'||tab==='paradas')&&prevTab!==tab) renderMap();
 }
 
 // ============================================================
@@ -3344,18 +3373,27 @@ function loadFromSheets(){
         applyDestinationForCurrentBase();
       }
       if(d.sheetDefaultTimes){sheetDefaultTimes=d.sheetDefaultTimes;try{localStorage.setItem(SK_SHEET_TIMES,JSON.stringify(sheetDefaultTimes));}catch{}}
+      if(d.vanCfg){vanCfg=d.vanCfg;try{localStorage.setItem(SK_VAN_CFG,JSON.stringify(vanCfg));}catch{}}
+      if(d.gerCustom){try{localStorage.setItem(GER_KEY_EARLY,JSON.stringify(d.gerCustom));}catch{}}
+      if(d.errosValidados&&typeof errosValidados!=='undefined'){errosValidados=d.errosValidados;try{localStorage.setItem(SK_ERROS_VALIDADOS,JSON.stringify(errosValidados));}catch{}}
+      if(d.raFixedRoutes&&typeof raFixedRoutes!=='undefined'){raFixedRoutes=d.raFixedRoutes;try{localStorage.setItem(SK_RA_FIXED,JSON.stringify(raFixedRoutes));}catch{}}
+      if(d.stopsRealRouteCache&&typeof stopsRealRouteCache!=='undefined'){stopsRealRouteCache=d.stopsRealRouteCache;try{localStorage.setItem(SK_STOPS_REAL_ROUTES,JSON.stringify(stopsRealRouteCache));}catch{}}
+      if(Array.isArray(d.extraDests)){extraDests=d.extraDests;try{localStorage.setItem(SK_DESTS,JSON.stringify(extraDests));}catch{}}
+      if(d.routeDestMap){routeDestMap=d.routeDestMap;try{localStorage.setItem(SK_RDEST,JSON.stringify(routeDestMap));}catch{}}
       applyDestinationForCurrentBase();
       localStorage.removeItem(SK);hiddenRoutes.clear();
       if(!d.records||!d.records.length){
         initData([],'Google Sheets');applyDestinationForCurrentBase();renderMap();renderHistory();
         rememberLoadedRemoteSave();
         setSheetsStatus('ok','☁️ Base vazia');
+        setSI(true,'carregado');
         showToast('📭 Base de dados vazia — importe um Excel para começar');
         return;
       }
       initData(d.records,'Google Sheets');applyDestinationForCurrentBase();renderMap();renderHistory();
       rememberLoadedRemoteSave();
       setSheetsStatus('ok','☁️ '+d.records.length+' reg. carregados');
+      setSI(true,'carregado');
       showToast('✅ '+d.records.length+' registros carregados do Sheets');
     })
     .catch(e=>{
@@ -3426,17 +3464,17 @@ function doSyncToSheets(){
     action:'save',
     sheetId:sheetId,
     records:allRecords.map(({_id,_modified,_new,_radius,...r})=>({...r,horario:normH(r.horario)})),
-    vanDestTimes,changeHistory,sheetCfg,sheetDefaultTimes,ts:Date.now()
+    vanDestTimes,changeHistory,sheetCfg,sheetDefaultTimes,vanCfg,gerCustom:_gerLoadData(),errosValidados,raFixedRoutes,stopsRealRouteCache,extraDests,routeDestMap,ts:Date.now()
   });
   fetch(sheetsUrl,{method:'POST',mode:'no-cors',body:payload})
     .then(()=>{
       setTimeout(()=>{
         jsonpRequest(sheetsUrl,{action:'verifyLastSave',sheetId:sheetId},SHEETS_TIMEOUT_VERIFY)
           .then(d=>{
-            if(d&&d.ok){sheetLoadedRemoteTs=Number(d.ts)||Date.now();setSheetsStatus('ok','☁️ Sync ok ✅ '+new Date().toLocaleTimeString('pt-BR'));setSI(true);showToast('✅ Salvo no Google Sheets! ('+d.saved+' reg.)');}
-            else{setSheetsStatus('ok','☁️ Sync enviado');setSI(true);showToast('✅ Dados enviados ao Sheets');}
+            if(d&&d.ok){sheetLoadedRemoteTs=Number(d.ts)||Date.now();setSheetsStatus('ok','☁️ Sync ok ✅ '+new Date().toLocaleTimeString('pt-BR'));setSI(true,new Date(Number(d.ts)||Date.now()).toLocaleTimeString('pt-BR'));showToast('✅ Salvo no Google Sheets! ('+d.saved+' reg.)');}
+            else{setSheetsStatus('ok','☁️ Sync enviado');setSI(true,'enviado');showToast('✅ Dados enviados ao Sheets');}
           })
-          .catch(()=>{setSheetsStatus('ok','☁️ Sync enviado');setSI(true);showToast('✅ Dados enviados ao Sheets');})
+          .catch(()=>{setSheetsStatus('ok','☁️ Sync enviado');setSI(true,'enviado');showToast('✅ Dados enviados ao Sheets');})
           .finally(()=>{setSyncButtonsDisabled(false);});
       },2500);
     })
@@ -4400,7 +4438,9 @@ function renderMap(){
     const{lat:_el,lon:_eo}=effectiveEmb(r);
     const sorted=byVan[vk(r)]?[...byVan[vk(r)]].filter(x=>hasEffectiveEmb(x)).sort((a,b)=>a.ordem-b.ordem):[];
     const seq=sorted.findIndex(x=>x._id===r._id);
-    const paradaNum=r.num_parada!=null?Number(r.num_parada):(seq>=0?seq+1:null);
+    const paradaNum=activeListTab==='paradas'
+      ?(r.num_parada!=null?Number(r.num_parada):(seq>=0?seq+1:null))
+      :(r.ordem!=null?Number(r.ordem):(seq>=0?seq+1:null));
     const stopKey=_el&&_eo?`${vk(r)}|${Number(_el).toFixed(4)}|${Number(_eo).toFixed(4)}`:'';
     const paxCount=stopKey?(stopPaxCount[stopKey]||1):1;
     markers[r._id]={};
@@ -4645,7 +4685,7 @@ function searchGoogleText(id,tipo){
     showToast(isCasa?'⚠️ Informe o endereço antes de pesquisar':'⚠️ Informe o embarque antes de pesquisar');
     return;
   }
-  const cidade=(r.cidade||'Curitiba').trim();
+  const cidade=isCasa?(r.cidade||'Curitiba').trim():getCidadeGeocode(r,'emb');
   const partes=[texto,r.bairro,cidade,'Paraná','Brasil'];
   const query=partes.filter(Boolean).join(', ');
   window.open('https://www.google.com/search?q='+encodeURIComponent(query),'_blank','noopener');
@@ -5060,7 +5100,7 @@ function updateCoord(id,type,lat,lng,skipHistory,meta){
   if(typeof svSheetView!=='undefined'&&svSheetView)svRender();
   markDirty();
   if(type==='casa')libSet(r.endereco,normCity(r.cidade)||'Curitiba',lat,lng,{kind:'casa',source:'manual/update'});
-  else if(r.embarque)libSet(r.embarque,normCity(r.cidade)||'Curitiba',lat,lng,{kind:'embarque',source:'manual/update'});
+  else if(r.embarque)libSet(r.embarque,getCidadeGeocode(r,'emb'),lat,lng,{kind:'embarque',source:'manual/update'});
   syncRecordAddressFromCoords(id,type,lat,lng,meta);
 }
 function saveCoords(id,type){
@@ -5120,7 +5160,7 @@ function applyAddressSync(id,type,parts,label){
   if(changed){
     r._modified=true;
     if(type==='casa')libSet(r.endereco,normCity(r.cidade)||'Curitiba',r.lat_casa,r.lon_casa,{kind:'casa',source:'address-sync'});
-    else if(r.embarque)libSet(r.embarque,normCity(r.cidade)||'Curitiba',r.lat_emb,r.lon_emb,{kind:'embarque',source:'address-sync'});
+    else if(r.embarque)libSet(r.embarque,getCidadeGeocode(r,'emb'),r.lat_emb,r.lon_emb,{kind:'embarque',source:'address-sync'});
     if(selectedId===id)showDetail(r);
     updateLI(id);
     if(typeof svSheetView!=='undefined'&&svSheetView)svRender();
@@ -5330,6 +5370,76 @@ const PR_CITY_CENTROIDS={
   'uberaba':[-25.5002,-49.3800],'guabirotuba':[-25.5000,-49.2500],
 };
 function normCityKey(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim();}
+function escJs(s){return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/[\r\n]+/g,' ');}
+const EMB_CITY_OVERRIDE_KEY='_embarqueCidadeOverride';
+function getEmbCityOverrides(){
+  const raw=(sheetCfg&&sheetCfg[EMB_CITY_OVERRIDE_KEY])||{};
+  const out={};
+  if(Array.isArray(raw)){
+    raw.forEach(x=>{const from=normCityKey(x&&x.from);const to=normCity(x&&x.to);if(from&&to)out[from]=to;});
+  }else if(raw&&typeof raw==='object'){
+    Object.entries(raw).forEach(([k,v])=>{const from=normCityKey(k);const to=normCity(v);if(from&&to)out[from]=to;});
+  }
+  return out;
+}
+function saveEmbCityOverrides(map){
+  sheetCfg=sheetCfg||{};
+  sheetCfg[EMB_CITY_OVERRIDE_KEY]=map||{};
+  try{localStorage.setItem(SK_SHEET_CFG,JSON.stringify(sheetCfg));}catch{}
+  if(typeof setSI==='function')setSI(false);
+}
+function getCidadeGeocode(r,type){
+  const cidadeLinha=normCity(r&&r.cidade)||'Curitiba';
+  if(type!=='emb')return cidadeLinha;
+  const override=getEmbCityOverrides()[normCityKey(cidadeLinha)];
+  return normCity(override)||cidadeLinha;
+}
+function openEmbCityOverrideModal(){
+  const map=getEmbCityOverrides();
+  const rows=Object.entries(map).sort((a,b)=>a[0].localeCompare(b[0])).map(([from,to])=>`
+    <tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#111827">${escHtml(from)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#111827">${escHtml(to)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:right"><button class="br" style="font-size:10px;padding:3px 8px" onclick="removeEmbCityOverride('${escJs(from)}')">Remover</button></td>
+    </tr>`).join('') || '<tr><td colspan="3" style="padding:12px;text-align:center;color:#6b7280;font-size:11px">Nenhuma cidade cadastrada</td></tr>';
+  showInfoModal('Cidades nao atendidas', `
+    <div style="font-size:12px;color:#374151;line-height:1.5">
+      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:9px 10px;margin-bottom:12px">
+        A cidade da linha continua sendo a cidade real da pessoa. Esta regra muda apenas a cidade usada para geocodificar o ponto de embarque.
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end;margin-bottom:10px">
+        <label style="font-size:11px;font-weight:700;color:#374151">Cidade da linha<br><input id="emb-city-from" type="text" placeholder="Ex: Campo Largo" style="width:100%;height:28px;border:1px solid #d1d5db;border-radius:4px;padding:3px 7px;font-size:12px"></label>
+        <label style="font-size:11px;font-weight:700;color:#374151">Geocodificar embarque em<br><input id="emb-city-to" type="text" value="Curitiba" style="width:100%;height:28px;border:1px solid #d1d5db;border-radius:4px;padding:3px 7px;font-size:12px"></label>
+        <button class="bs" style="height:28px;padding:0 12px;font-size:11px" onclick="addEmbCityOverrideFromModal()">Adicionar</button>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden">
+        <thead><tr style="background:#f8fafc"><th style="text-align:left;padding:6px 8px">Cidade da linha</th><th style="text-align:left;padding:6px 8px">Cidade do embarque</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:12px">
+        <button class="bg" style="font-size:11px;padding:5px 10px" onclick="document.getElementById('_info_modal').style.display='none'">Fechar</button>
+        <button class="bp" style="font-size:11px;padding:5px 10px" onclick="syncToSheets()">Salvar no Sheets</button>
+      </div>
+    </div>`);
+  setTimeout(()=>document.getElementById('emb-city-from')?.focus(),50);
+}
+function addEmbCityOverrideFromModal(){
+  const from=normCity(document.getElementById('emb-city-from')?.value||'');
+  const to=normCity(document.getElementById('emb-city-to')?.value||'Curitiba');
+  if(!from||!to){showToast('Informe as duas cidades');return;}
+  const map=getEmbCityOverrides();
+  map[normCityKey(from)]=to;
+  saveEmbCityOverrides(map);
+  showToast('Cidade cadastrada para embarque: '+from+' -> '+to);
+  openEmbCityOverrideModal();
+}
+function removeEmbCityOverride(fromKey){
+  const map=getEmbCityOverrides();
+  delete map[normCityKey(fromKey)];
+  saveEmbCityOverrides(map);
+  showToast('Cidade removida da lista');
+  openEmbCityOverrideModal();
+}
 
 function libDel(address,city){
   const k=libKey(address,city);
@@ -5339,12 +5449,18 @@ function libDel(address,city){
 const GEO_MAX_KM=50;
 function geoResultValid(res,r,type){
   if(!res||isNaN(res.lat)||isNaN(res.lng)) return false;
-  const cidade=normCity(r.cidade)||'Curitiba';
+  const cidade=getCidadeGeocode(r,type);
+  const cidadeLinha=normCity(r.cidade)||'Curitiba';
+  const embCityOverridden=type==='emb'&&normCityKey(cidade)!==normCityKey(cidadeLinha);
   const ck=normCityKey(cidade);
 
   // Reference point: home coords (for emb) or city centroid
   let refLat=null,refLng=null;
-  if(type==='emb'&&r.lat_casa&&r.lon_casa){refLat=+r.lat_casa;refLng=+r.lon_casa;}
+  if(type==='emb'&&!embCityOverridden&&r.lat_casa&&r.lon_casa){
+    const cityCtr=PR_CITY_CENTROIDS[ck];
+    const casaOkParaRef=!cityCtr||hav(+r.lat_casa,+r.lon_casa,cityCtr[0],cityCtr[1])<80;
+    if(casaOkParaRef){refLat=+r.lat_casa;refLng=+r.lon_casa;}
+  }
   if(!refLat){const c=PR_CITY_CENTROIDS[ck];if(c){refLat=c[0];refLng=c[1];}}
 
   if(refLat&&refLng){
@@ -5586,7 +5702,7 @@ function splitIntersection(emb){
 
 // ---- CASCADE PRINCIPAL ----
 async function geocodeCascade(r,type,onStatus){
-  const cidade=normCity(r.cidade)||'Curitiba',bairro=r.bairro||'',uf='Paraná';
+  const cidade=getCidadeGeocode(r,type),bairro=r.bairro||'',uf='Paraná';
 
   if(type==='casa'){
     const end=normAddr(r.endereco||'');
@@ -5821,7 +5937,7 @@ async function geocodeCascade(r,type,onStatus){
 // Wrap geocodeCascade: pre-invalidate stale bad cache + reject out-of-area results
 const _rawGeocodeCascade=geocodeCascade;
 geocodeCascade=async function(r,type,onStatus){
-  const cidade=normCity(r.cidade)||'Curitiba';
+  const cidade=getCidadeGeocode(r,type);
   const cacheKey=type==='casa'?(r.endereco||''):(r.embarque||'');
   // Invalidate cached result if it no longer passes validation
   const cached=libGet(cacheKey,cidade);
@@ -5877,7 +5993,7 @@ function isApproxEmbResult(res){
 
 function clearEmbGeoCache(r){
   if(!r||!r.embarque)return;
-  const k=libKey(r.embarque,normCity(r.cidade)||'Curitiba');
+  const k=libKey(r.embarque,getCidadeGeocode(r,'emb'));
   if(geoLibrary[k]){
     delete geoLibrary[k];
     saveLib();
@@ -6117,7 +6233,7 @@ function applySplitStreetPoint(id,lat,lng,label){
     'Confirmar ponto de embarque',
     `Salvar este ponto para <b>${r.nome}</b>?<br><br><b>${escapeHtml(label||r.embarque)}</b><br><span style="font-size:11px;color:#6b7280">${lat.toFixed(6)}, ${lng.toFixed(6)}</span>`,
     ()=>{
-      libSet(r.embarque,normCity(r.cidade)||'Curitiba',lat,lng);
+      libSet(r.embarque,getCidadeGeocode(r,'emb'),lat,lng);
       updateCoord(id,'emb',lat,lng,false,{label});
       clearSplitStreetFallback();
       map.panTo([lat,lng],{animate:true});
@@ -6241,7 +6357,9 @@ document.getElementById('btn-add-pax').addEventListener('click',()=>{
   document.getElementById('pax-form-xlsx').style.display='none';
   document.getElementById('pm-manual').checked=true;
   pendingXlsxPax=[];
+  pendingXlsxAnalysis=[];
   document.getElementById('pax-xlsx-preview').textContent='';
+  const ana=document.getElementById('pax-xlsx-analysis');if(ana)ana.style.display='none';
   clearPaxSuggestion();
   // Clear form
   ['pf-nome','pf-mat','pf-end','pf-bai','pf-emb','pf-hor'].forEach(id=>document.getElementById(id).value='');
@@ -6289,12 +6407,148 @@ document.getElementById('pax-xlsx-input').addEventListener('change',e=>{
     try{
       const recs=parseXlsx(ev.target.result);
       pendingXlsxPax=recs;
+      pendingXlsxAnalysis=[];
+      const ana=document.getElementById('pax-xlsx-analysis');if(ana)ana.style.display='block';
       document.getElementById('pax-xlsx-preview').innerHTML=
-        `<div style="background:#d1fae5;color:#065f46;padding:8px;border-radius:6px;margin-top:8px"><b>✅ ${recs.length} passageiros encontrados</b><br>${[...new Set(recs.map(r=>r.van))].join(', ')}</div>`;
+        `<div style="background:#d1fae5;color:#065f46;padding:8px;border-radius:6px;margin-top:8px"><b>✅ ${recs.length} passageiros encontrados</b><br>${[...new Set(recs.map(r=>r.van).filter(Boolean))].join(', ')||'sem vans definidas'}<br><span style="font-size:10px;color:#047857">Clique em <b>Analisar rotas</b> antes de adicionar.</span></div>`;
+      renderXlsxRouteAnalysis();
     }catch(err){document.getElementById('pax-xlsx-preview').innerHTML=`<div style="color:#dc2626">❌ ${err.message}</div>`;}
   };
   r.readAsArrayBuffer(f);e.target.value='';
 });
+function resetXlsxRouteAnalysis(){
+  pendingXlsxAnalysis=[];
+  renderXlsxRouteAnalysis();
+}
+document.getElementById('pax-xlsx-turno')?.addEventListener('change',resetXlsxRouteAnalysis);
+
+function estimateRouteTimeFromDistance(refRecord,distM){
+  const hor=normH(refRecord&&refRecord.horario)||'';
+  if(!hor||!/^[0-2]\d:[0-5]\d$/.test(hor))return '';
+  const detourKm=(distM||0)/1000*1.3;
+  const detourMin=Math.round(detourKm/40*60);
+  const [hh,mm]=hor.split(':').map(Number);
+  const tot=hh*60+mm-detourMin;
+  const day=((tot%1440)+1440)%1440;
+  return `${String(Math.floor(day/60)).padStart(2,'0')}:${String(day%60).padStart(2,'0')}`;
+}
+function closestBoardingForXlsx(lat,lng,sheetFilter){
+  let closest=null;
+  allRecords.forEach(r=>{
+    if(sheetFilter&&r.sheet!==sheetFilter)return;
+    if(!r.lat_emb||!r.lon_emb)return;
+    const d=hav(lat,lng,r.lat_emb,r.lon_emb);
+    if(d==null)return;
+    const distM=d*1000;
+    if(!closest||distM<closest.distM)closest={r,distM};
+  });
+  return closest;
+}
+function buildXlsxAnalyzedRecord(item,sheetVal,index){
+  const src=item.record||{};
+  const sug=item.suggestion;
+  const base={...src,sheet:sheetVal,_id:allRecords.length+index,_modified:true,_new:true};
+  if(item.geo){base.lat_casa=item.geo.lat;base.lon_casa=item.geo.lng;if(!base.bairro)base.bairro=item.geo.bairro||'';}
+  if(sug&&sug.r){
+    base.van=sug.r.van||base.van;
+    base.rota=sug.r.van||base.rota||'';
+    base.embarque=sug.r.embarque||base.embarque||'';
+    base.horario=normH(sug.r.horario)||base.horario||'';
+    base.lat_emb=sug.r.lat_emb||base.lat_emb||null;
+    base.lon_emb=sug.r.lon_emb||base.lon_emb||null;
+    base.num_parada=sug.r.num_parada!=null?sug.r.num_parada:base.num_parada;
+  }else if(item.closest&&item.closest.r){
+    base.van=item.closest.r.van||base.van;
+    base.rota=item.closest.r.van||base.rota||'';
+    base.horario=estimateRouteTimeFromDistance(item.closest.r,item.closest.distM)||base.horario||'';
+  }
+  return base;
+}
+async function analyzePendingXlsxRoutes(){
+  if(!pendingXlsxPax.length){showToast('Nenhum XLSX carregado.');return;}
+  const turnoSel=document.getElementById('pax-xlsx-turno');
+  const sheetVal=normSheet(turnoSel?.value||'');
+  if(!sheetVal){showToast('Selecione a planilha antes de analisar.');turnoSel&&turnoSel.focus();return;}
+  const btn=document.getElementById('btn-xlsx-analyze');
+  if(btn){btn.disabled=true;btn.textContent='Analisando...';}
+  pendingXlsxAnalysis=[];
+  const countEl=document.getElementById('pax-xlsx-analysis-count');
+  for(let i=0;i<pendingXlsxPax.length;i++){
+    const rec=pendingXlsxPax[i];
+    if(countEl)countEl.textContent=`${i+1}/${pendingXlsxPax.length}`;
+    const item={record:rec,selected:true,status:'err',label:'Pendente',geo:null,suggestion:null,closest:null,msg:''};
+    let lat=rec.lat_casa, lng=rec.lon_casa;
+    if(!(lat&&lng)&&rec.endereco){
+      const tmp={...rec,sheet:sheetVal,cidade:normCity(rec.cidade)||'Curitiba'};
+      const geo=await geocodeCascade(tmp,'casa',msg=>showToast(`XLSX ${i+1}/${pendingXlsxPax.length}: ${msg}`));
+      if(geo){lat=geo.lat;lng=geo.lng;item.geo={lat,lng,bairro:bairroFromGeoResult(geo),source:geo.source||''};}
+    }else if(lat&&lng){
+      item.geo={lat:+lat,lng:+lng,bairro:rec.bairro||'',source:'planilha'};
+    }
+    if(!lat||!lng){
+      item.selected=false;
+      item.msg='Endereço sem coordenada';
+    }else{
+      const nearby=findNearbyBoarding(+lat,+lng,sheetVal);
+      const closest=closestBoardingForXlsx(+lat,+lng,sheetVal);
+      item.closest=closest;
+      if(nearby.length){
+        item.status='ok';item.label='Com sugestão';item.suggestion=nearby[0];item.msg=`${nearby[0].r.van} · ${nearby[0].distM.toFixed(0)}m`;
+      }else if(closest){
+        item.status='warn';item.selected=false;item.label='Fora do raio';item.msg=`${closest.r.van} · ${closest.distM.toFixed(0)}m`;
+      }else{
+        item.selected=false;
+        item.msg='Sem pontos de embarque na planilha';
+      }
+    }
+    pendingXlsxAnalysis.push(item);
+    renderXlsxRouteAnalysis();
+    await sleep(120);
+  }
+  if(btn){btn.disabled=false;btn.textContent='Reanalisar rotas';}
+  renderXlsxRouteAnalysis();
+  const ok=pendingXlsxAnalysis.filter(x=>x.status==='ok').length;
+  const warn=pendingXlsxAnalysis.filter(x=>x.status==='warn').length;
+  const err=pendingXlsxAnalysis.length-ok-warn;
+  showToast(`Análise pronta: ${ok} com sugestão · ${warn} fora do raio · ${err} pendente(s)`);
+}
+function renderXlsxRouteAnalysis(){
+  const box=document.getElementById('pax-xlsx-analysis');
+  const list=document.getElementById('pax-xlsx-analysis-list');
+  const count=document.getElementById('pax-xlsx-analysis-count');
+  if(!box||!list)return;
+  if(pendingXlsxPax.length)box.style.display='block';
+  const rows=pendingXlsxAnalysis.length?pendingXlsxAnalysis:pendingXlsxPax.map(r=>({record:r,selected:true,status:'pending',label:'Não analisado',msg:'Clique em Analisar rotas'}));
+  const filter=document.getElementById('pax-xlsx-analysis-filter')?.value||'all';
+  const shown=rows.filter(x=>filter==='all'||(filter==='err'?!['ok','warn'].includes(x.status):x.status===filter));
+  const sel=pendingXlsxAnalysis.length?pendingXlsxAnalysis.filter(x=>x.selected).length:pendingXlsxPax.length;
+  if(count)count.textContent=`${sel}/${pendingXlsxPax.length} selecionados`;
+  if(!pendingXlsxPax.length){list.innerHTML='<div style="padding:14px;text-align:center;color:#6b7280">Nenhum arquivo carregado.</div>';return;}
+  list.innerHTML=shown.map(item=>{
+    const realIdx=rows.indexOf(item);
+    const r=item.record||{};
+    const color=item.status==='ok'?'#059669':item.status==='warn'?'#d97706':item.status==='pending'?'#6b7280':'#dc2626';
+    const sug=item.suggestion?.r||item.closest?.r||null;
+    const dist=item.suggestion?.distM??item.closest?.distM;
+    const route=sug?`${escapeHtml(sug.van||'sem van')} · ${escapeHtml(sug.sheet||'')}`:'—';
+    const emb=sug?escapeHtml(sug.embarque||'sem embarque'):'—';
+    return `<div style="display:grid;grid-template-columns:28px 1.4fr 1fr 1.4fr 70px;gap:8px;align-items:center;padding:7px 9px;border-bottom:1px solid #f1f5f9;background:${item.selected===false?'#f8fafc':'#fff'}">
+      <input type="checkbox" ${item.selected!==false?'checked':''} onchange="setXlsxAnalysisSelected(${realIdx},this.checked)">
+      <div style="min-width:0"><b style="font-size:11px;color:#111827">${escapeHtml(r.nome||'Sem nome')}</b><br><span style="font-size:10px;color:#6b7280">${escapeHtml(r.endereco||'')} · ${escapeHtml(r.cidade||'')}</span></div>
+      <div><span style="display:inline-block;background:${color};color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700">${escapeHtml(item.label)}</span><br><span style="font-size:10px;color:#6b7280">${escapeHtml(item.msg||'')}</span></div>
+      <div style="min-width:0"><b style="font-size:10px;color:#1d4ed8">${route}</b><br><span style="font-size:10px;color:#374151">${emb}</span></div>
+      <div style="font-size:10px;text-align:right;color:#374151">${dist!=null?dist.toFixed(0)+'m':'—'}</div>
+    </div>`;
+  }).join('')||'<div style="padding:14px;text-align:center;color:#6b7280">Nada neste filtro.</div>';
+}
+function setXlsxAnalysisSelected(idx,checked){
+  if(pendingXlsxAnalysis[idx])pendingXlsxAnalysis[idx].selected=!!checked;
+  renderXlsxRouteAnalysis();
+}
+function toggleAllXlsxAnalysis(checked){
+  if(pendingXlsxAnalysis.length)pendingXlsxAnalysis.forEach(x=>x.selected=!!checked);
+  renderXlsxRouteAnalysis();
+}
 
 // SUGGEST ROUTE button
 document.getElementById('btn-pax-suggest').addEventListener('click',async()=>{
@@ -6556,7 +6810,6 @@ document.getElementById('btn-pax-save').addEventListener('click',async()=>{
   const mode=document.querySelector('input[name="pax-mode"]:checked').value;
   if(mode==='xlsx'){
     if(!pendingXlsxPax.length){showToast('⚠️ Nenhum passageiro no arquivo');return;}
-    // ★ Planilha obrigatória (campo pax-xlsx-turno agora representa a planilha/sheet)
     const turnoSel=document.getElementById('pax-xlsx-turno');
     const sheetVal=normSheet(turnoSel?.value||'');
     if(!sheetVal){
@@ -6566,19 +6819,27 @@ document.getElementById('btn-pax-save').addEventListener('click',async()=>{
       setTimeout(()=>{if(turnoSel)turnoSel.style.border='2px solid #3b82f6';},2000);
       return;
     }
-    const newRecs=pendingXlsxPax.map((r,i)=>({
-      ...r,
-      sheet: sheetVal, // sobrescreve com a planilha selecionada
-      _id:allRecords.length+i,
-      _modified:true,
-      _new:true
-    }));
+    if(!pendingXlsxAnalysis.length){showToast('⚠️ Clique em Analisar rotas antes de adicionar');return;}
+    const chosen=pendingXlsxAnalysis.filter(x=>x.selected!==false);
+    if(!chosen.length){showToast('⚠️ Selecione pelo menos um passageiro');return;}
+    const newRecs=chosen.map((item,i)=>buildXlsxAnalyzedRecord(item,sheetVal,i));
+    const nextOrderByRoute={};
+    newRecs.forEach(rec=>{
+      const key=`${rec.sheet||''}||${rec.van||''}`;
+      if(nextOrderByRoute[key]==null){
+        const existing=allRecords.filter(r=>(r.sheet||'')===(rec.sheet||'')&&(r.van||'')===(rec.van||''));
+        nextOrderByRoute[key]=existing.length?Math.max(...existing.map(r=>parseInt(r.ordem)||0)):0;
+      }
+      rec.ordem=++nextOrderByRoute[key];
+    });
     allRecords.push(...newRecs);
-    addHistory('add','Importação XLSX',`${newRecs.length} passageiros adicionados — planilha: ${sheetVal}`,'',newRecs.map(r=>r.nome).slice(0,3).join(', ')+'...');
+    assignNumParada(newRecs);
+    addHistory('add','Importação XLSX analisada',`${newRecs.length} passageiros adicionados — planilha: ${sheetVal}`,'',newRecs.map(r=>r.nome).slice(0,3).join(', ')+'...');
     document.getElementById('add-pax-modal').style.display='none';
+    pendingXlsxPax=[];pendingXlsxAnalysis=[];
     clearPaxSuggestion();
     buildColors();populateFilters();populatePaxVanSelect();applyFilters();updateStats();markDirty();
-    showToast(`✅ ${newRecs.length} passageiros adicionados! Planilha: ${sheetVal}`);
+    showToast(`✅ ${newRecs.length} passageiros adicionados com análise de rotas!`);
     return;
   }
   // Manual
@@ -9622,7 +9883,7 @@ function renderStopsPanel(){
           :(sheetTime?'':`<span class="stop-time-chip pending">⏱️ não calculado</span>`);
         const timeRow=`<div class="stop-times-row">${sheetChip}${calcChip}</div>`;
         const legInfo=calc?`<div class="stop-leg">trecho: ${fmtDist(calc.legDists[i]||0)} · ${fmtTime(calc.legDurs[i]||0)}</div>`:'';
-        html+=`<div class="${cardClass}" draggable="true" data-stopkey="${s.key}" data-routekey="${routeKey}" ondragstart="stopDragStart(event)" ondragover="event.preventDefault()" ondrop="stopDrop(event)" onclick="openBpEditByStopKey('${routeKey}','${s.key}')">
+        html+=`<div class="${cardClass}" draggable="true" data-stopkey="${s.key}" data-routekey="${routeKey}" ondragstart="stopDragStart(event)" ondragover="event.preventDefault()" ondrop="stopDrop(event)" onclick="stopCardClick('${routeKey}','${s.key}',this)">
           <div class="stop-dot" style="background:${color}">${i+1}</div>
           <div class="stop-info">
             <div class="stop-title">${s.label||'Ponto sem nome'}</div>
@@ -9688,6 +9949,42 @@ function centerCurrentStopsRoute(){
   if(!stops.length){showToast('⚠️ Nenhuma parada para centralizar');return;}
   const rd=getRouteDest(routeKey);
   map.fitBounds(L.latLngBounds(stops.map(s=>[s.lat,s.lon]).concat([[rd.lat,rd.lon]])),{padding:[80,80]});
+}
+
+let _stopHighlightEls=[];
+let _stopHighlightTimer=null;
+let _activeStopCard=null;
+
+function clearStopHighlight(){
+  _stopHighlightEls.forEach(el=>el.classList.remove('marker-pulse'));
+  _stopHighlightEls=[];
+  if(_stopHighlightTimer){clearTimeout(_stopHighlightTimer);_stopHighlightTimer=null;}
+  if(_activeStopCard){_activeStopCard.classList.remove('stop-active');_activeStopCard=null;}
+}
+
+function stopCardClick(routeKey,stopKey,cardEl){
+  const st=getRouteStops(routeKey).find(s=>s.key===stopKey);
+  if(!st) return;
+  if(_activeStopCard&&_activeStopCard===cardEl){
+    clearStopHighlight();
+    openBpEdit({routeKey,stopKey,lat:st.lat,lon:st.lon,label:st.label});
+    return;
+  }
+  clearStopHighlight();
+  _activeStopCard=cardEl;
+  cardEl.classList.add('stop-active');
+  st.ids.forEach(id=>{
+    const m=markers[id];
+    [m?.e?.getElement()?.firstElementChild, m?.c?.getElement()?.firstElementChild].forEach(el=>{
+      if(el){el.classList.add('marker-pulse');_stopHighlightEls.push(el);}
+    });
+  });
+  map.setView([st.lat,st.lon],Math.max(map.getZoom(),16),{animate:true});
+  _stopHighlightTimer=setTimeout(()=>{
+    _stopHighlightEls.forEach(el=>el.classList.remove('marker-pulse'));
+    _stopHighlightEls=[];
+    if(_activeStopCard){_activeStopCard.classList.remove('stop-active');_activeStopCard=null;}
+  },5000);
 }
 
 function openBpEditByStopKey(routeKey,stopKey){
@@ -9833,7 +10130,7 @@ function bpEditSaveCoordsOnly(){
     r.lat_emb=parsed.lat;
     r.lon_emb=parsed.lon;
     r._modified=true;
-    if(r.embarque) libSet(r.embarque,normCity(r.cidade)||'Curitiba',parsed.lat,parsed.lon,{kind:'embarque',source:'manual/coords-only'});
+    if(r.embarque) libSet(r.embarque,getCidadeGeocode(r,'emb'),parsed.lat,parsed.lon,{kind:'embarque',source:'manual/coords-only'});
   });
   currentBpEdit.lat=parsed.lat;
   currentBpEdit.lon=parsed.lon;
@@ -12506,17 +12803,17 @@ function syncToSheetsAndThen(callback){
   const payload=JSON.stringify({
     action:'save',sheetId:sheetId,
     records:allRecords.map(({_id,_modified,_new,_radius,...r})=>({...r,horario:normH(r.horario)})),
-    vanDestTimes,changeHistory,sheetCfg,sheetDefaultTimes,ts:Date.now()
+    vanDestTimes,changeHistory,sheetCfg,sheetDefaultTimes,vanCfg,gerCustom:_gerLoadData(),errosValidados,raFixedRoutes,stopsRealRouteCache,extraDests,routeDestMap,ts:Date.now()
   });
   fetch(sheetsUrl,{method:'POST',mode:'no-cors',body:payload})
     .then(()=>{
       setTimeout(()=>{
         jsonpRequest(sheetsUrl,{action:'verifyLastSave',sheetId:sheetId},SHEETS_TIMEOUT_VERIFY)
           .then(d=>{
-            if(d&&d.ok){setSheetsStatus('ok','☁️ Sync ok ✅ '+new Date().toLocaleTimeString('pt-BR'));setSI(true);showToast('✅ Salvo no Sheets!');}
-            else{setSheetsStatus('ok','☁️ Sync enviado');setSI(true);}
+            if(d&&d.ok){setSheetsStatus('ok','☁️ Sync ok ✅ '+new Date().toLocaleTimeString('pt-BR'));setSI(true,new Date(Number(d.ts)||Date.now()).toLocaleTimeString('pt-BR'));showToast('✅ Salvo no Sheets!');}
+            else{setSheetsStatus('ok','☁️ Sync enviado');setSI(true,'enviado');}
           })
-          .catch(()=>{setSheetsStatus('ok','☁️ Sync enviado');setSI(true);})
+          .catch(()=>{setSheetsStatus('ok','☁️ Sync enviado');setSI(true,'enviado');})
           .finally(()=>{if(btn)btn.disabled=false;if(callback)callback();});
       },2500);
     })

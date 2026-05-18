@@ -3451,9 +3451,9 @@ function pingSheets(){
   jsonpRequest(sheetsUrl,{action:'ping',sheetId:sheetId},SHEETS_TIMEOUT_PING)
     .then(d=>{
       if(d&&d.ok){setSheetsStatus('ok','☁️ Sheets conectado ✅');showToast('✅ Google Sheets conectado!');}
-      else{setSheetsStatus('err','☁️ Erro: '+(d&&d.error||'resposta inválida'));showSheetsHelp(d&&d.error);}
+      else{setSheetsStatus('err','☁️ Erro: '+(d&&d.error||'resposta inválida'));showToast('❌ Sheets: '+(d&&d.error||'resposta inválida'));}
     })
-    .catch(e=>{setSheetsStatus('err','☁️ Falha — veja o checklist');showSheetsHelp(e.message);});
+    .catch(e=>{setSheetsStatus('err','☁️ Falha — veja o checklist');showToast('❌ Sheets: '+e.message);});
 }
 
 function loadFromSheets(){
@@ -3497,7 +3497,7 @@ function loadFromSheets(){
     .catch(e=>{
       setSheetsStatus('err','☁️ Erro ao carregar');
       showToast('❌ '+e.message);
-      if(!/Timeout/i.test(e.message)) showSheetsHelp(e.message);
+      // modal só abre pelo botão ? manual
     });
 }
 

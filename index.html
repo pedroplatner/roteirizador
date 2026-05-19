@@ -3392,14 +3392,17 @@ function semAcento(s){
   return s.normalize('NFD').replace(/[̀-ͯ]/g,'');
 }
 
+function sanitizeSheetId(val){
+  if(!val) return '';
+  val=val.trim().replace(/[<>"'`]/g,'');
+  const match=val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return match?match[1]:val.replace(/[^a-zA-Z0-9_-]/g,'');
+}
 function saveSheetId(){
   const siEl=document.getElementById('sheet-id-input');
   if(!siEl) return;
-  let val=siEl.value.trim();
+  const val=sanitizeSheetId(siEl.value);
   if(!val){showToast('⚠️ Cole o ID ou a URL completa da planilha');return;}
-  // Extrai ID se o usuário colou a URL completa do Google Sheets
-  const match=val.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-  if(match) val=match[1];
   siEl.value=val;
   sheetId=val;
   localStorage.setItem(SK_SHEETID,val);
@@ -3416,13 +3419,19 @@ function setSheetsStatus(state,msg){
 }
 
 function fixSheetsUrl(url){
-  return url.trim().replace(/\/dev\/?$/,'/exec').replace(/\/+$/,'');
+  url=url.trim().replace(/[<>"'`]/g,'');
+  if(url&&!/^https:\/\/script\.google\.com\//i.test(url)&&!/^https:\/\/awkwardlooking/i.test(url)){
+    // Aceita apenas URLs do GAS ou do proxy n8n conhecido
+    if(!/^https:\/\//i.test(url)){showToast('⚠️ URL inválida — deve começar com https://');return '';}
+  }
+  return url.replace(/\/dev\/?$/,'/exec').replace(/\/+$/,'');
 }
 
 function connectSheets(){
   let url=document.getElementById('sheets-url').value.trim();
   if(!url){showToast('⚠️ Cole a URL do Apps Script');return;}
   url=fixSheetsUrl(url);
+  if(!url) return;
   document.getElementById('sheets-url').value=url;
   sheetsUrl=url;localStorage.setItem(SK_SHEETS,url);
   setSheetsStatus('loading','☁️ Conectando...');
@@ -3554,18 +3563,32 @@ function syncToSheets(){
     doSyncToSheets();
   });
 }
+function _buildSyncPayload(){
+  // Cap changeHistory em 50 entradas — evita payload crescente sem fim
+  const hist=(changeHistory||[]).slice(-50);
+  // stopsRealRouteCache pode ser grande — só inclui se mudou desde o último sync
+  const cacheStr=JSON.stringify(stopsRealRouteCache||{});
+  const cacheChanged=cacheStr!==(_lastSyncCacheStr||'');
+  if(cacheChanged) _lastSyncCacheStr=cacheStr;
+  return JSON.stringify({
+    action:'save',sheetId,
+    records:allRecords.map(({_id,_modified,_new,_radius,...r})=>({...r,horario:normH(r.horario)})),
+    vanDestTimes,changeHistory:hist,sheetCfg,sheetDefaultTimes,vanCfg,
+    gerCustom:_gerLoadData(),errosValidados,raFixedRoutes,
+    stopsRealRouteCache:cacheChanged?(stopsRealRouteCache||{}):undefined,
+    extraDests,routeDestMap,ts:Date.now()
+  });
+}
+let _lastSyncCacheStr='';
+
 function doSyncToSheets(){
   setSheetsStatus('loading','☁️ Salvando...');
   setSyncButtonsDisabled(true);
   persistDefaultDestForActiveBase();
-  const payload=JSON.stringify({
-    action:'save',
-    sheetId:sheetId,
-    records:allRecords.map(({_id,_modified,_new,_radius,...r})=>({...r,horario:normH(r.horario)})),
-    vanDestTimes,changeHistory,sheetCfg,sheetDefaultTimes,vanCfg,gerCustom:_gerLoadData(),errosValidados,raFixedRoutes,stopsRealRouteCache,extraDests,routeDestMap,ts:Date.now()
-  });
+  const payload=_buildSyncPayload();
   fetch(sheetsUrl,{method:'POST',mode:'no-cors',body:payload})
     .then(()=>{
+      lsGuard();
       jsonpRequest(sheetsUrl,{action:'verifyLastSave',sheetId:sheetId},SHEETS_TIMEOUT_VERIFY)
         .then(d=>{
           if(d&&d.ok){sheetLoadedRemoteTs=Number(d.ts)||Date.now();setSheetsStatus('ok','☁️ Sync ok ✅ '+new Date().toLocaleTimeString('pt-BR'));setSI(true,new Date(Number(d.ts)||Date.now()).toLocaleTimeString('pt-BR'));showToast('✅ Salvo no Google Sheets! ('+d.saved+' reg.)');}
@@ -3579,11 +3602,7 @@ function doSyncToSheets(){
 
 function doSyncSilent(){
   if(!sheetsUrl||!sheetId)return;
-  const payload=JSON.stringify({
-    action:'save',sheetId:sheetId,
-    records:allRecords.map(({_id,_modified,_new,_radius,...r})=>({...r,horario:normH(r.horario)})),
-    vanDestTimes,changeHistory,sheetCfg,sheetDefaultTimes,vanCfg,gerCustom:_gerLoadData(),errosValidados,raFixedRoutes,stopsRealRouteCache,extraDests,routeDestMap,ts:Date.now()
-  });
+  const payload=_buildSyncPayload();
   fetch(sheetsUrl,{method:'POST',mode:'no-cors',body:payload})
     .then(()=>{setSI(true,'auto');})
     .catch(()=>{});
@@ -7601,7 +7620,7 @@ async function r2Generate(){
 
   setMsg('Clustering geográfico...',15);
   const points=paxRecs.map(r=>({lat:r.lat_casa,lng:r.lon_casa}));
-  const groups=kmeans(points,Math.min(k,paxRecs.length));
+  const groups=await runWorker('kmeans',{points,k:Math.min(k,paxRecs.length)});
 
   setMsg('Calculando pontos de embarque...',30);
   r2Result=[];
@@ -7659,8 +7678,8 @@ async function r2Generate(){
     // Start from point farthest from DEST
     const destDists=embPoints.map(p=>hav(p.lat,p.lng,DEST.lat,DEST.lon)*1000);
     const startIdx=destDists.indexOf(Math.max(...destDists));
-    let order=nearestNeighbor(distMatrix,startIdx);
-    if(embPoints.length>2) order=twoOpt(order,distMatrix,destDists);
+    let order=await runWorker('nearestNeighbor',{distMatrix,startIdx});
+    if(embPoints.length>2) order=await runWorker('twoOpt',{order,distMatrix,destDist:destDists});
 
     // Build stop list
     const stops=order.map((idx,seq)=>({
@@ -8124,8 +8143,8 @@ async function r3Calculate(){
   // Start from point farthest from destination
   const destDists=stops.map(s=>hav(s.lat,s.lng,DEST.lat,DEST.lon)*1000);
   const startIdx=destDists.indexOf(Math.max(...destDists));
-  let order=nearestNeighbor(distMatrix,startIdx);
-  if(stops.length>2) order=twoOpt(order,distMatrix,destDists);
+  let order=await runWorker('nearestNeighbor',{distMatrix,startIdx});
+  if(stops.length>2) order=await runWorker('twoOpt',{order,distMatrix,destDist:destDists});
   const optimizedStops=order.map(i=>stops[i]);
 
   // ---- Calculate times and distances for both sequences ----
@@ -9727,8 +9746,8 @@ async function suggestBetterStopsRoute(){
   const dDest=stops.map(s=>(hav(s.lat,s.lon,DEST.lat,DEST.lon)||0));
   // Começa do ponto mais distante do destino (lógica padrão do sistema)
   const startIdx=dDest.indexOf(Math.max(...dDest));
-  let order=nearestNeighbor(distMatrix,startIdx);
-  if(n>3) order=twoOpt(order,distMatrix,dDest);  // passa destDist para 2-opt aberto
+  let order=await runWorker('nearestNeighbor',{distMatrix,startIdx});
+  if(n>3) order=await runWorker('twoOpt',{order,distMatrix,destDist:dDest});
   const suggestedStops=order.map(i=>stops[i]);
 
   // ── Calcula distâncias totais (haversine) para comparação ──
@@ -11793,8 +11812,8 @@ async function raRoteirizarComPontos(){
       destDist=stops.map(s=>hav(s.lat,s.lng,dest.lat,dest.lon)||0);
     }
 
-    let order=nearestNeighbor(distMatrix,destDist.indexOf(Math.max(...destDist)));
-    if(n>3) order=twoOpt(order,distMatrix,destDist);
+    let order=await runWorker('nearestNeighbor',{distMatrix,startIdx:destDist.indexOf(Math.max(...destDist))});
+    if(n>3) order=await runWorker('twoOpt',{order,distMatrix,destDist});
     const sorted=order.map(i=>stops[i]);
 
     let totalMin,totalDistKm,legDurations=[],osrmUsed=false;
@@ -12296,8 +12315,8 @@ async function raCalcular(){
     }
 
     // --- Fase 2: otimização de ordem ---
-    let order=nearestNeighbor(distMatrix,destDist.indexOf(Math.max(...destDist)));
-    if(n>3) order=twoOpt(order,distMatrix,destDist);
+    let order=await runWorker('nearestNeighbor',{distMatrix,startIdx:destDist.indexOf(Math.max(...destDist))});
+    if(n>3) order=await runWorker('twoOpt',{order,distMatrix,destDist});
     const sorted=order.map(i=>stops[i]);
 
     // --- Fase 3: tempos reais via osrmRoute ---
@@ -14010,6 +14029,67 @@ function initAutoSave(){
 }
 setTimeout(initAutoSave,1500);
 setTimeout(()=>applyLightModeState({render:lightMode}),1800);
+
+// ── Web Worker para algoritmos pesados (2-OPT, K-Means, NearestNeighbor) ──
+let _routeWorker=null;
+const _workerPending=new Map();
+let _workerCallId=0;
+function _getWorker(){
+  if(_routeWorker) return _routeWorker;
+  try{
+    _routeWorker=new Worker('worker.js');
+    _routeWorker.onmessage=e=>{
+      const{id,result,error}=e.data;
+      const p=_workerPending.get(id);
+      if(!p) return;
+      _workerPending.delete(id);
+      error?p.reject(new Error(error)):p.resolve(result);
+    };
+    _routeWorker.onerror=e=>{
+      _workerPending.forEach(p=>p.reject(new Error('Worker error')));
+      _workerPending.clear();
+      _routeWorker=null;
+    };
+  }catch(e){ _routeWorker=null; }
+  return _routeWorker;
+}
+function runWorker(fn,args){
+  const w=_getWorker();
+  if(!w){
+    // Fallback síncrono se Worker não disponível
+    if(fn==='nearestNeighbor') return Promise.resolve(nearestNeighbor(args.distMatrix,args.startIdx));
+    if(fn==='twoOpt')          return Promise.resolve(twoOpt(args.order,args.distMatrix,args.destDist));
+    if(fn==='kmeans')          return Promise.resolve(kmeans(args.points,args.k,args.maxIter||50));
+    return Promise.reject(new Error('fn desconhecida: '+fn));
+  }
+  return new Promise((resolve,reject)=>{
+    const id=++_workerCallId;
+    _workerPending.set(id,{resolve,reject});
+    w.postMessage({id,fn,args});
+  });
+}
+
+// ── localStorage guard — proteção contra overflow ──
+function lsUsedBytes(){
+  let total=0;
+  try{for(const k in localStorage) if(localStorage.hasOwnProperty(k)) total+=((localStorage[k]||'').length+(k||'').length)*2;}catch{}
+  return total;
+}
+function lsGuard(){
+  const used=lsUsedBytes();
+  if(used>4.5*1024*1024){
+    // Crítico: limpa caches grandes (não dados do usuário)
+    const cacheKeys=[SK_STOPS_REAL_ROUTES,'rotas_lib_v1','rotas_history_v1'];
+    cacheKeys.forEach(k=>{try{localStorage.removeItem(k);}catch{}});
+    stopsRealRouteCache={};
+    console.warn('[lsGuard] localStorage crítico ('+Math.round(used/1024)+'KB) — caches limpos');
+    showToast('⚠️ Cache limpo automaticamente para liberar espaço');
+  } else if(used>4*1024*1024){
+    showToast('⚠️ Armazenamento local quase cheio ('+Math.round(used/1024)+'KB). Considere exportar os dados.');
+  }
+}
+// Roda o guard a cada save e uma vez na inicialização
+setTimeout(lsGuard,3000);
 
 // Debounce renderMap — evita redesenho em cascata (múltiplas chamadas viram 1 só após 150ms)
 const _renderMapImpl=renderMap;

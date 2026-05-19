@@ -1007,9 +1007,9 @@ function _gerRenameCustom(type,oldVal,newVal){
 <div id="header">
   <h1>🗺️ Rotas</h1>
   <span class="badge">ViaGestão</span>
-  <span class="save-ind no" id="save-ind" title="O navegador é apenas rascunho local. Clique em 💾 ou ↑ Sync para salvar na planilha.">⚠️ Não salvo no Sheets</span>
+  <span class="save-ind" id="save-ind" style="display:none" title=""></span>
   <span id="lib-count" style="font-size:10px;opacity:.6"></span>
-  <span id="sheets-status-hdr" class="sync-status" style="font-size:10px;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,.1)">☁️ Google Sheets: não conectado</span>
+  <span id="sheets-status-hdr" class="sync-status" style="font-size:10px;padding:2px 8px;border-radius:8px;background:rgba(255,255,255,.1);display:none"></span>
   <span style="font-size:10px;opacity:.4;margin-left:auto">v12</span>
   <button onclick="sairDoSistema()" title="Trocar token / sair" style="font-size:10px;padding:2px 10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);border-radius:4px;cursor:pointer;white-space:nowrap">🚪 Sair</button>
 </div>
@@ -2961,7 +2961,7 @@ function loadLib(){
   try{const d=JSON.parse(localStorage.getItem(SK_LIB)||'{}');geoLibrary=d||{};}catch{}
   updateLibCount();
 }
-function setSI(ok, detail=''){const el=document.getElementById('save-ind');if(!el)return;el.textContent=ok?('✅ Salvo no Sheets'+(detail?' '+detail:'')):'⚠️ Não salvo no Sheets';el.title=ok?'Último salvamento confirmado na planilha Google Sheets':'O navegador é apenas rascunho local. Clique em 💾 ou ↑ Sync para salvar na planilha.';el.className='save-ind '+(ok?'ok':'no');}
+function setSI(ok, detail=''){const el=document.getElementById('save-ind');if(!el)return;el.textContent=ok?('✅ Salvo no Sheets'+(detail?' '+detail:'')):'⚠️ Não salvo no Sheets';el.title=ok?'Último salvamento confirmado na planilha Google Sheets':'O navegador é apenas rascunho local. Clique em 💾 ou ↑ Sync para salvar na planilha.';el.className='save-ind '+(ok?'ok':'no');el.style.display='';}
 let saveTimer;
 function markDirty(){
   setSI(false);
@@ -3412,7 +3412,7 @@ function setSheetsStatus(state,msg){
   const el=document.getElementById('sheets-status');
   if(el){el.textContent=msg;el.className=cls;}
   const hdr=document.getElementById('sheets-status-hdr');
-  if(hdr){hdr.textContent='☁️ '+msg;hdr.className=cls;}
+  if(hdr){hdr.textContent=msg;hdr.className=cls;hdr.style.display='';}
 }
 
 function fixSheetsUrl(url){

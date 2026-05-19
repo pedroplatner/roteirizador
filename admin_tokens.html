@@ -461,7 +461,7 @@ const KEY_GAS_URL      = '_gas_url';
 const KEY_DB_URL       = '_db_url';
 const KEY_N8N_URL      = '_n8n_url';
 
-let ADMIN_KEY     = localStorage.getItem(KEY_ADMIN) || '';
+let ADMIN_KEY     = sessionStorage.getItem(KEY_ADMIN) || '';
 let ultimoToken   = '';
 let ultimoPayload = '';
 let TOKENS_CACHE  = [];
@@ -516,7 +516,7 @@ function fazerLogin() {
     .then(function(d) {
       if (d.ok) {
         ADMIN_KEY = key;
-        localStorage.setItem(KEY_ADMIN, key);
+        sessionStorage.setItem(KEY_ADMIN, key);
         document.getElementById('login-screen').style.display = 'none';
         renderTokens(d.tokens || []);
         atualizarStats(d.tokens || []);
@@ -530,7 +530,7 @@ function fazerLogin() {
     });
 }
 function logoutAdmin() {
-  localStorage.removeItem(KEY_ADMIN);
+  sessionStorage.removeItem(KEY_ADMIN);
   ADMIN_KEY = '';
   location.reload();
 }
@@ -547,7 +547,7 @@ document.addEventListener('DOMContentLoaded', function() {
           atualizarStatusN8n();
         } else {
           // Chave inválida → limpa e mostra tela de login
-          localStorage.removeItem(KEY_ADMIN);
+          sessionStorage.removeItem(KEY_ADMIN);
           ADMIN_KEY = '';
           document.getElementById('login-screen').style.display = 'flex';
           document.getElementById('admin-key').focus();

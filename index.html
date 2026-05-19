@@ -3323,9 +3323,9 @@ const SK_VAN_CFG='rotas_van_cfg_v1';
 const SK_SHEET_TIMES='rotas_sheet_times_v1';
 const SK_SHEET_CFG='rotas_sheet_cfg_v1';
 const SK_STOPS_REAL_ROUTES='rotas_stops_real_routes_v1';
-const SHEETS_TIMEOUT_PING=15000;
-const SHEETS_TIMEOUT_LOAD=45000;
-const SHEETS_TIMEOUT_VERIFY=25000;
+const SHEETS_TIMEOUT_PING=8000;
+const SHEETS_TIMEOUT_LOAD=20000;
+const SHEETS_TIMEOUT_VERIFY=12000;
 // vanCfg: { [routeKey]: {tipo:'VAN'|'MICRO'|'ONIBUS'|'CUSTOM', capacidade:15, nome?:''} }
 let vanCfg={};
 try{ vanCfg=JSON.parse(localStorage.getItem(SK_VAN_CFG)||'{}'); }catch{}
@@ -3566,17 +3566,27 @@ function doSyncToSheets(){
   });
   fetch(sheetsUrl,{method:'POST',mode:'no-cors',body:payload})
     .then(()=>{
-      setTimeout(()=>{
-        jsonpRequest(sheetsUrl,{action:'verifyLastSave',sheetId:sheetId},SHEETS_TIMEOUT_VERIFY)
-          .then(d=>{
-            if(d&&d.ok){sheetLoadedRemoteTs=Number(d.ts)||Date.now();setSheetsStatus('ok','☁️ Sync ok ✅ '+new Date().toLocaleTimeString('pt-BR'));setSI(true,new Date(Number(d.ts)||Date.now()).toLocaleTimeString('pt-BR'));showToast('✅ Salvo no Google Sheets! ('+d.saved+' reg.)');}
-            else{setSheetsStatus('ok','☁️ Sync enviado');setSI(true,'enviado');showToast('✅ Dados enviados ao Sheets');}
-          })
-          .catch(()=>{setSheetsStatus('ok','☁️ Sync enviado');setSI(true,'enviado');showToast('✅ Dados enviados ao Sheets');})
-          .finally(()=>{setSyncButtonsDisabled(false);});
-      },2500);
+      jsonpRequest(sheetsUrl,{action:'verifyLastSave',sheetId:sheetId},SHEETS_TIMEOUT_VERIFY)
+        .then(d=>{
+          if(d&&d.ok){sheetLoadedRemoteTs=Number(d.ts)||Date.now();setSheetsStatus('ok','☁️ Sync ok ✅ '+new Date().toLocaleTimeString('pt-BR'));setSI(true,new Date(Number(d.ts)||Date.now()).toLocaleTimeString('pt-BR'));showToast('✅ Salvo no Google Sheets! ('+d.saved+' reg.)');}
+          else{setSheetsStatus('ok','☁️ Sync enviado');setSI(true,'enviado');showToast('✅ Dados enviados ao Sheets');}
+        })
+        .catch(()=>{setSheetsStatus('ok','☁️ Sync enviado');setSI(true,'enviado');showToast('✅ Dados enviados ao Sheets');})
+        .finally(()=>{setSyncButtonsDisabled(false);});
     })
     .catch(e=>{setSheetsStatus('err','☁️ Falha');showToast('❌ '+e.message);setSyncButtonsDisabled(false);});
+}
+
+function doSyncSilent(){
+  if(!sheetsUrl||!sheetId)return;
+  const payload=JSON.stringify({
+    action:'save',sheetId:sheetId,
+    records:allRecords.map(({_id,_modified,_new,_radius,...r})=>({...r,horario:normH(r.horario)})),
+    vanDestTimes,changeHistory,sheetCfg,sheetDefaultTimes,vanCfg,gerCustom:_gerLoadData(),errosValidados,raFixedRoutes,stopsRealRouteCache,extraDests,routeDestMap,ts:Date.now()
+  });
+  fetch(sheetsUrl,{method:'POST',mode:'no-cors',body:payload})
+    .then(()=>{setSI(true,'auto');})
+    .catch(()=>{});
 }
 
 function showSheetsHelp(errDetail){
@@ -13980,7 +13990,7 @@ function toggleAutoSave(enabled){
   }
   autoSaveTimer=setInterval(()=>{
     if(!sheetsUrl||!sheetId)return;
-    syncToSheets();
+    doSyncSilent();
     const t=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
     if(lastEl)lastEl.textContent='último: '+t;
   },interval*60*1000);
@@ -14000,6 +14010,11 @@ function initAutoSave(){
 }
 setTimeout(initAutoSave,1500);
 setTimeout(()=>applyLightModeState({render:lightMode}),1800);
+
+// Debounce renderMap — evita redesenho em cascata (múltiplas chamadas viram 1 só após 150ms)
+const _renderMapImpl=renderMap;
+let _rmTimer=null;
+renderMap=function(){clearTimeout(_rmTimer);_rmTimer=setTimeout(_renderMapImpl,150);};
 </script>
 
 <!-- Modal: Dashboard de Estatísticas -->
